@@ -1,0 +1,19 @@
+{
+    "name": "vertilia/recif",
+    "description": "Code generator for rule engines",
+    "license": "BSD-2-Clause",
+    "type": "library",
+
+    "autoload": {
+        "psr-4": {
+            "Recif\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    },
+    "require": {
+        "php": "^7",
+        "ext-json": "*"
+    }
+}

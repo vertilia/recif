@@ -1,0 +1,11 @@
+# General
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/*
+.idea/*
+
+# composer
+composer.lock
+vendor/
