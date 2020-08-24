@@ -1,13 +1,15 @@
 <?php
 
+%DeclareStrictTypes%
+
 %Namespace%
 
 class %ClassName% %Extends%
 {
-    public function evaluate($context)
+    public function evaluate(%ContextType% $context) %ReturnType%
     {
         // return on success
-        $success = true;
+        $success = %ReturnOnSuccess%;
 
         // rules
         if (%Rules%) {
@@ -15,6 +17,6 @@ class %ClassName% %Extends%
         }
 
         // not found
-        return null;
+        return %ReturnOnFail%;
     }
 }

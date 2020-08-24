@@ -6,7 +6,7 @@ Rule engine parser that translates conditions from rule file in json or yaml for
 
 When businesses express new or updated rulesets, they may be either coded by programmers into the existing information system, or they may be declared in a special dialect that will be understood by the system. In this case programmer's intervention is not needed, but each time the system needs to evaluate the conditions from a ruleset for specific context (for example, define product segment) the system needs to parse the rule file, process conditions starting at the top level until the matching rule found, all this recursively calling methods for each operation mentioned in a ruleset.
 
-With recif, when rulesets are updated in a rule file we call the converter that translates the rules into a native code. That code represents the ruleset conditions from the file. All operations are already translated to native constructs like OR, AND etc, so the execution of the full ruleset is optimal. To use that class inside your project instantiate the object and call its `evaluate()` method passing the context object as a parameter. `evaluate()` will return the corresponding value or `null` if passed context does not match any condition.
+With recif, when rulesets are updated in a rule file we call the converter that translates the rules into a native code. That code represents the ruleset conditions from the file. All operations are already translated to native constructs like OR, AND etc, so the execution of the full ruleset is optimal. To use that class inside your project instantiate the object and call its `evaluate()` method passing the context object as a parameter. `evaluate()` will return the corresponding value or `false` if passed context does not match any condition.
 
 ## Example 1
 
@@ -203,7 +203,7 @@ class Ruleset
         }
 
         // not found
-        return null;
+        return false;
     }
 }
 ```

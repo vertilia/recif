@@ -2,7 +2,7 @@
 
 namespace Recif;
 
-interface IRuleConvertor
+interface IRulesetGenerator
 {
     /**
      * Instantiates RuleConvertor object, sets ruleset.
@@ -23,5 +23,5 @@ interface IRuleConvertor
      *
      * @return string
      */
-    public function convert(): string;
+    public function generate(): string;
 }

@@ -2,15 +2,20 @@
 
 namespace Recif\Platform\Php;
 
-class RuleConvertor implements \Recif\IRuleConvertor
+class RulesetGenerator implements \Recif\IRulesetGenerator
 {
     const DEFAULT_CLASS_NAME = 'Ruleset';
 
     // options
+    protected $declare_strict_types;
     protected $namespace;
     protected $class_name;
     protected $extends;
     protected $implements;
+    protected $context_type;
+    protected $return_type;
+    protected $return_on_success;
+    protected $return_on_fail;
     protected $php5;
 
     // ruleset
@@ -22,11 +27,21 @@ class RuleConvertor implements \Recif\IRuleConvertor
     public function __construct($ruleset, array $options = null)
     {
         // options
+        $this->declare_strict_types = $options['declareStrictTypes'] ?? null;
         $this->namespace = $options['namespace'] ?? null;
         $this->class_name = $options['className'] ?? self::DEFAULT_CLASS_NAME;
         $this->extends = $options['extends'] ?? null;
         $this->implements = $options['implements'] ?? null;
+        $this->context_type = $options['contextType'] ?? null;
+        $this->return_type = $options['returnType'] ?? null;
+        $this->return_on_success = $options['returnOnSuccess'] ?? 'true';
+        $this->return_on_fail = $options['returnOnFail'] ?? 'false';
         $this->php5 = $options['php5'] ?? null;
+
+        if ($this->php5) {
+            unset($this->declare_strict_types);
+            unset($this->return_type);
+        }
 
         // ruleset
         $this->ruleset = $ruleset;
@@ -35,7 +50,7 @@ class RuleConvertor implements \Recif\IRuleConvertor
         $this->initCallbacks();
     }
 
-    public function convert(): string
+    public function generate(): string
     {
         $extends_parts = [];
 
@@ -49,16 +64,26 @@ class RuleConvertor implements \Recif\IRuleConvertor
 
         return \preg_replace(
             [
+                '/%DeclareStrictTypes%\s*/ui',
                 '/%Namespace%\s*/ui',
-                '/%ClassName%\s*/ui',
-                '/%Extends%\s*/ui',
-                '/%Rules%\s*/ui'
+                '/%ClassName%/ui',
+                '/\s*%Extends%/ui',
+                '/%Rules%/ui',
+                '/%ContextType%\s*/ui',
+                '/\s*%ReturnType%/ui',
+                '/%ReturnOnSuccess%/ui',
+                '/%ReturnOnFail%/ui',
             ],
             [
-                $this->namespace ? "namespace $this->namespace;\n\n" : "",
-                $this->class_name ? "$this->class_name" : "",
-                $extends_parts ? ' ' . \implode(' ', $extends_parts) . "\n" : "\n",
-                $this->elementToCode($this->ruleset)
+                $this->declare_strict_types ? "declare(strict_types=1);\n\n" : null,
+                $this->namespace ? "namespace $this->namespace;\n\n" : null,
+                $this->class_name,
+                $extends_parts ? ' ' . \implode(' ', $extends_parts) : null,
+                $this->elementToCode($this->ruleset),
+                $this->context_type ? "$this->context_type " : null,
+                $this->return_type ? " : $this->return_type" : null,
+                $this->return_on_success,
+                $this->return_on_fail,
             ],
             \file_get_contents(__DIR__ . '/fragments/main.frg')
         );
