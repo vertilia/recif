@@ -338,7 +338,7 @@ class RuleConvertor implements \Recif\IRuleConvertor
                     $fn = null;
             }
             return sprintf(
-                '(%s) and %s(%s)',
+                '(%s) and %s($success = %s)',
                 $this->op_callbacks[$op['op']]($op['args']),
                 $fn,
                 $this->scalarToCode($op['return'])

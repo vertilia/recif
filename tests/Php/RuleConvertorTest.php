@@ -11,7 +11,6 @@ class RuleConvertorTest extends \PHPUnit\Framework\TestCase
     {
         $rc = new RuleConvertor($ruleset, $options);
         $code = $rc->convert();
-        print_r($code);
         $this->assertRegExp($pattern, $code);
     }
 
@@ -75,7 +74,56 @@ class RuleConvertorTest extends \PHPUnit\Framework\TestCase
 
             // multiple operations
             [['eq' => [0, ["not"=>1]]], null, '/\(\(?0\)?\s?==\s?\(?!1\)?\)/'],
-            [['and' => [true, ["not"=>false]]], null, '/\(\(?true\)?\s?and\s?\(?!\(?false\)?\)?\)/'],
+            [
+                ['and' => [true, ["not"=>false]]], 
+                null, 
+                '/\(\(?true\)?\s?and\s?\(?!\(?false\)?\)?\)/'
+            ],
+
+            // examples
+            [
+                \json_decode('{"gt": [{"cx":""}, 10]}', true),
+                null,
+                '/\(\(?\$context\)?\s?>\s?\(?10\)?\)/',
+            ],
+            [
+                \json_decode(
+                    '{
+                        "and": [
+                        {"ge": [{"cx":""}, 0]},
+                        {"le": [{"cx":""}, 100]}
+                        ]
+                    }',
+                    true
+                ),
+                null,
+                '/\(\(?\$context\)?\s?<=\s?\(?100\)?\)/',
+            ],
+            [
+                \json_decode(
+                    '{
+                      "or": [
+                        {
+                          "and": [
+                            {"eq": [{"cx":"country"}, "US"]},
+                            {"eq": [{"cx":"currency"}, "USD"]}
+                          ],
+                          "return": "North America"
+                        },
+                        {
+                          "and": [
+                            {"in": [{"cx":"country"}, ["DE", "ES", "FR", "IT"]]},
+                            {"eq": [{"cx":"currency"}, "EUR"]}
+                          ],
+                          "return": "Europe"
+                        }
+                      ]
+                    }',
+                    true
+                ),
+                null,
+                '/North America/',
+            ]
         ];
     }
 
