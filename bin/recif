@@ -11,53 +11,90 @@ require __DIR__ . '/../vendor/autoload.php';
 
 call_user_func(function() use ($argv){
     // read ruleset file from STDIN
-    $input_json = file_get_contents('php://stdin');
+    $input_stream = file_get_contents('php://stdin');
     
     // check file is not empty
-    if (empty(trim($input_json))) {
-        die("Usage: ".basename($argv[0])." <ruleset.json >RuleSet.php\nSee README.md for ruleset file format\n");
+    if (empty(trim($input_stream))) {
+        die(sprintf(
+<<<EOU
+Usage: %s [options] <ruleset.json >Ruleset.php
+Options:
+  -n  namespace (default: not set)
+  -c  class name (default: Ruleset)
+  -e  extends class (default: not set)
+  -i  implements interfaces, comma separated list (default: not set)
+  -x  context type (default: not set)
+  -r  return type (default: not set)
+  -S  return on success default value (default: true)
+  -F  return on fail default value (default: false)
+  -d  declare static_types (default: not set)
+  -5  generate php5-compatible code
+  -y  YAML format of input stream (needs yaml PECL extension)
+
+See README.md for ruleset file format
+
+EOU
+        , basename($argv[0])));
     }
 
-    // convert from json to native array
-    $input_array = json_decode($input_json, true);
-    if (isset($input_array)) {
-        // set generator options
-        $opt = getopt('n:c:e:i:t:r:S:F:d5');
-        $options = [];
-        if (isset($opt['n'])) {
-            $options['namespace'] = $opt['n'];
-        }
-        if (isset($opt['c'])) {
-            $options['className'] = $opt['c'];
-        }
-        if (isset($opt['e'])) {
-            $options['extends'] = $opt['e'];
-        }
-        if (isset($opt['i'])) {
-            $options['implements'] = $opt['i'];
-        }
-        if (isset($opt['t'])) {
-            $options['contextType'] = $opt['t'];
-        }
-        if (isset($opt['r'])) {
-            $options['returnType'] = $opt['r'];
-        }
-        if (isset($opt['S'])) {
-            $options['returnOnSuccess'] = $opt['S'];
-        }
-        if (isset($opt['F'])) {
-            $options['returnOnFail'] = $opt['F'];
-        }
-        if (isset($opt['d'])) {
-            $options['declareStrictTypes'] = true;
-        }
-        if (isset($opt['5'])) {
-            $options['php5'] = true;
-        }
+    // set generator options
+    $opt = getopt('n:c:e:i:t:r:S:F:d5y');
+    $options = [];
+    if (isset($opt['n'])) {
+        $options['namespace'] = $opt['n'];
+    }
+    if (isset($opt['c'])) {
+        $options['className'] = $opt['c'];
+    }
+    if (isset($opt['e'])) {
+        $options['extends'] = $opt['e'];
+    }
+    if (isset($opt['i'])) {
+        $options['implements'] = $opt['i'];
+    }
+    if (isset($opt['t'])) {
+        $options['contextType'] = $opt['t'];
+    }
+    if (isset($opt['r'])) {
+        $options['returnType'] = $opt['r'];
+    }
+    if (isset($opt['S'])) {
+        $options['returnOnSuccess'] = $opt['S'];
+    }
+    if (isset($opt['F'])) {
+        $options['returnOnFail'] = $opt['F'];
+    }
+    if (isset($opt['d'])) {
+        $options['declareStrictTypes'] = true;
+    }
+    if (isset($opt['5'])) {
+        $options['php5'] = true;
+    }
+    $yaml = isset($opt['y']);
 
-        // instantiate generator and produce code from input ruleset
-        echo (new Recif\Platform\Php\RulesetGenerator($input_array, $options))->generate();
+    // convert ruleset from input stream to native array
+    if ($yaml) {
+        if (function_exists('yaml_parse')) {
+            $input_array = yaml_parse($input_stream);
+            if ($input_array === false) {
+                die("Error processing input stream\n");
+            }
+        } else {
+            die(
+<<<EOM
+Needs yaml PECL extension (not installed) to process yaml input.
+https://pecl.php.net/package/yaml
+
+EOM
+            );
+        }
     } else {
-        die('Cannot process input: ' . json_last_error_msg() . "\n");
+        $input_array = json_decode($input_stream, true);
+        if (!isset($input_array)) {
+            die(sprintf("Error processing input stream: %s\n", json_last_error_msg()));
+        }
     }
+
+    // instantiate generator and produce code from input ruleset
+    echo (new Recif\Platform\Php\RulesetGenerator($input_array, $options))->generate();
 });

@@ -91,7 +91,8 @@ Options:
   -S  return on success default value (default: true)
   -F  return on fail default value (default: false)
   -d  declare static_types (default: not set)
-  -5  generate php5 compatible code
+  -5  generate php5-compatible code
+  -y  YAML format of input stream (needs yaml PECL extension)
 ```
 
 Simplest ruleset: evaluate the `true` statement:
