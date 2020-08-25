@@ -66,6 +66,52 @@ If condition matches it will return continent name for the context (`North Ameri
 }
 ```
 
+## Installation
+
+Clone from `GitHub` and initialise with `composer`:
+
+```
+$ git clone https://github.com/vertilia/recif.git
+$ composer dump-autoload -d recif
+```
+
+## Command line usage
+
+Make an alias to the executable `recif/bin/recif` to run it as `recif` command.
+
+```
+$ recif [options] <ruleset.json >ruleset.php
+Options:
+  -n  namespace (default: not set)
+  -c  class name (default: Ruleset)
+  -e  extends class (default: not set)
+  -i  implements interfaces, comma separated list (default: not set)
+  -x  context type (default: not set)
+  -r  return type (default: not set)
+  -S  return on success default value (default: true)
+  -F  return on fail default value (default: false)
+  -d  declare static_types (default: not set)
+  -5  generate php5 compatible code
+```
+
+Simplest ruleset: evaluate the `true` statement:
+
+```
+echo true | recif
+```
+
+Same level: evaluate that 1 > 0:
+
+```
+echo '{"gt":[1,0]}' | recif
+```
+
+Check context, add namespace to generated class and specify return type of its `evaluate()` method:
+
+```
+echo '{"gt":[{"cx":""},0]}' | recif -n MyNamespace\\Level2 -r boolean
+```
+
 ## Syntax of rule files
 
 Rule file contains a tree of conditions starting with a root condition.

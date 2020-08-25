@@ -1,0 +1,63 @@
+#!/usr/bin/php
+<?php
+
+/**
+ * CLI-based script accepting input conditions file on STDIN, a list of command
+ * line arguments and providing generated class on STDOUT. Errors output via
+ * STDERR.
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+
+call_user_func(function() use ($argv){
+    // read ruleset file from STDIN
+    $input_json = file_get_contents('php://stdin');
+    
+    // check file is not empty
+    if (empty(trim($input_json))) {
+        die("Usage: ".basename($argv[0])." <ruleset.json >RuleSet.php\nSee README.md for ruleset file format\n");
+    }
+
+    // convert from json to native array
+    $input_array = json_decode($input_json, true);
+    if (isset($input_array)) {
+        // set generator options
+        $opt = getopt('n:c:e:i:t:r:S:F:d5');
+        $options = [];
+        if (isset($opt['n'])) {
+            $options['namespace'] = $opt['n'];
+        }
+        if (isset($opt['c'])) {
+            $options['className'] = $opt['c'];
+        }
+        if (isset($opt['e'])) {
+            $options['extends'] = $opt['e'];
+        }
+        if (isset($opt['i'])) {
+            $options['implements'] = $opt['i'];
+        }
+        if (isset($opt['t'])) {
+            $options['contextType'] = $opt['t'];
+        }
+        if (isset($opt['r'])) {
+            $options['returnType'] = $opt['r'];
+        }
+        if (isset($opt['S'])) {
+            $options['returnOnSuccess'] = $opt['S'];
+        }
+        if (isset($opt['F'])) {
+            $options['returnOnFail'] = $opt['F'];
+        }
+        if (isset($opt['d'])) {
+            $options['declareStrictTypes'] = true;
+        }
+        if (isset($opt['5'])) {
+            $options['php5'] = true;
+        }
+
+        // instantiate generator and produce code from input ruleset
+        echo (new Recif\Platform\Php\RulesetGenerator($input_array, $options))->generate();
+    } else {
+        die('Cannot process input: ' . json_last_error_msg() . "\n");
+    }
+});
