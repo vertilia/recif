@@ -4,13 +4,13 @@ Rule engine parser that translates conditions from rule file in json or yaml for
 
 ## Description
 
-When businesses express new or updated rulesets, they may be either coded by programmers into the existing information system, or they may be declared in a special dialect that will be understood by the system. In this case programmer's intervention is not needed, but each time the system needs to evaluate the conditions from a ruleset for specific context (for example, define product segment) the system needs to parse the rule file, process conditions starting at the top level until the matching rule found, all this recursively calling methods for each operation mentioned in a ruleset.
+When businesses express new or updated rulesets, they may be either coded by programmers into the existing information system, or they may be declared in a special dialect that the system may parse and evaluate. In this case programmer's intervention is not needed, but the parsing and evaluation time may be significant. Each time the system needs to evaluate conditions from a ruleset for specific context (for example, define product segment) the system needs to parse the rule file, process conditions starting at the top level until the matching rule found, all this recursively calling methods for each operation mentioned in a ruleset.
 
-With recif, when rulesets are updated in a rule file we call the converter that translates the rules into a native code. That code represents the ruleset conditions from the file. All operations are already translated to native constructs like OR, AND etc, so the execution of the full ruleset is optimal. To use that class inside your project instantiate the object and call its `evaluate()` method passing the context object as a parameter. `evaluate()` will return the corresponding value or `false` if passed context does not match any condition.
+With recif, when rulesets are updated in a rule file we call the converter that translates the rules into a native code. That code represents the ruleset conditions from the file. All operations are already translated to native constructs like OR, AND etc, so the execution of the full ruleset is optimal. To use that class inside your project instantiate the object and call its `evaluate()` method passing the context as its parameter. `evaluate()` will return `true` (or corresponding value) if match found, or `false` if passed context does not match any condition.
 
 ## Example 1
 
-The simplest form: single condition. Input context is a literal numeric value that is evaluated and returns `true` if it is greater than `10`:
+Single condition. Input context is a literal numeric value that is evaluated and returns `true` if it is greater than `10`:
 
 ```json
 {
@@ -20,7 +20,7 @@ The simplest form: single condition. Input context is a literal numeric value th
 
 ## Example 2
 
-Multiple conditions combined with `AND` operation. Input context is a literal numeric value. Returns `true` if context value is in the range `0..100`:
+Multiple conditions combined with `AND` operator. Input context is a literal numeric value. Returns `true` if context value is in the range `0..100`:
 
 ```json
 {
@@ -117,18 +117,18 @@ echo '{"gt":[{"cx":""},0]}' | recif -n MyNamespace\\Level2 -r boolean
 
 Rule file contains a tree of conditions starting with a root condition.
 
-Each condition is an object with a single required entry containing operator name and arguments and optional `return` entry containing returned value.
+Each condition is an object with a single required entry containing operation name and arguments and optional `return` entry containing returned value.
 
-Operators like `or` must contain an array of arguments. Unary operators like `not` may operate on a single value, not an array. See [Operators reference]() for the full list of operators.
+Operators like `or` must contain an array of arguments. Unary operators like `not` may operate on a single value, not an array. See [Operations reference]() for the full list of available operations.
 
 Each argument may have one of the following forms:
 
 - literal value or array (normally used to compare the value with context field), like `"US"` or `["DE", "ES", "FR", "IT"]`;
 - object (representing context or another operation), like `{"cx":"currency"}` or `{"eq": [{"cx":"country"}, "US"]}`.
 
-Returned value represents a value that is returned to the outer operation when the corresponding condition evaluates to `true`. It may be declared as any type. If value is an object, it may represent context or one of its properties, like `{"cx":""}` or  `{"cx":"currency.iso_name"}`. In this case the value of this element or property will be returned.
+Returned value represents the value that is returned to the outer operation when the corresponding condition evaluates to `true`. It may be declared as any type. If value is an object, it may represent context or one of its properties, like `{"cx":""}` or  `{"cx":"currency.iso_name"}`. In this case the value of this element or property will be returned.
 
-## Operators reference
+## Operations reference
 
 Meanings below are given as php code.
 
@@ -216,9 +216,9 @@ Meaning: `mb_stripos($context, "word") !== false`
 
 `re` - string matches regular expression (arguments: string, regex). Unicode mode enabled.
 
-Example: `{"re": [{"cx":""}, "[0-9]+"]}`
+Example: `{"re": [{"cx":""}, "^[a-fA-F0-9]+$"]}`
 
-Meaning: `preg_match("/[0-9]+/u", $context)`
+Meaning: `preg_match("/^[a-fA-F0-9]+$/u", $context)`
 
 ## Code examples
 
