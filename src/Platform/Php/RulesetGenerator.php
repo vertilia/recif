@@ -150,12 +150,27 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
             },
             'not' => function ($arg) {
                 if (\is_scalar($arg)) {
-                    return '!' . $this->scalarToCode($arg);
+                    return '!' . \var_export($arg, true);
                 }
                 $op = $this->parseOperation($arg);
                 return '!(' . $this->operationToCode($op) . ')';
             },
-            
+
+            // math
+            'mod' => function ($args) {
+                return $this->op2Args('mod', '%', $args);
+            },
+            'rnd' => function ($args) {
+                if (! \is_array($args) or \array_keys($args) != [0, 1]) {
+                    throw new \LengthException("\"rnd\" operation must have 2 arguments");
+                }
+                return \sprintf(
+                    '\\rand(%s, %s)',
+                    $this->elementToCode($args[0]),
+                    $this->elementToCode($args[1])
+                );
+            },
+
             // array operations
             'in' => function ($args) {
                 if (! \is_array($args) or \array_keys($args) != [0, 1]) {
@@ -170,11 +185,11 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
                     $this->arrayToCode('in', $args[1])
                 );
             },
-            
+
             // string operations
             'sub' => function ($args) {
                 if (! \is_array($args) or \array_keys($args) != [0, 1]) {
-                    throw new \LengthException("\"sub\" operation must have 2 arguments");
+                    throw new \LengthException("\"sub\" operation must have 2 arguments (text, substring)");
                 }
                 return \sprintf(
                     '\\strpos(%s, %s) !== false',
@@ -184,16 +199,58 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
             },
             're' => function ($args) {
                 if (! \is_array($args) or \array_keys($args) != [0, 1]) {
-                    throw new \LengthException("\"sub\" operation must have 2 arguments");
+                    throw new \LengthException("\"re\" operation must have 2 arguments (text, regexp)");
                 }
-                if (! \is_scalar($args[1])) {
+                if (! \is_string($args[1])) {
                     throw new \InvalidArgumentException("\"re\" operation must have a string as second argument");
                 }
                 return \sprintf(
-                    "\\preg_match('/%s/u', %s)",
-                    \addcslashes($args[1], "'\0\\"),
+                    "\\preg_match(%s, %s)",
+                    \var_export($args[1], true),
                     $this->elementToCode($args[0])
                 );
+            },
+
+            // flatten operator
+            '_' => function ($args) {
+                if (\is_array($args)) {
+                    $params = [];
+                    $params_flat = [];
+                    $flat_array = true;
+                    $i = 0;
+                    foreach ($args as $k => $v) {
+                        $el_code = $this->elementToCode($v);
+                        $params[] = \sprintf('%s=>%s', \var_export($k, true), $el_code);
+                        $params_flat[] = \sprintf('%s', $el_code);
+                        if (!\is_int($k) or $k != $i) {
+                            $flat_array = false;
+                        }
+                        $i++;
+                    }
+                    return sprintf('[%s]', \implode(', ', $flat_array ? $params_flat : $params));
+                } else {
+                    return \var_export($args, true);
+                }
+            },
+
+            // native function call
+            'fn' => function ($args) {
+                if (! \is_array($args) or count($args) < 1 or !\is_string($args[0])) {
+                    throw new \LengthException(
+                        "\"fn\" operation must have at least one argument (function name, [param1, [...]])"
+                    );
+                }
+
+                // set function name from first arg
+                $fn = \array_shift($args);
+
+                // set function params from the rest of args array
+                $params = [];
+                foreach ($args as $param) {
+                    $params[] = $this->elementToCode($param);
+                }
+
+                return \sprintf('%s(%s)', $fn, \implode(', ', $params));
             },
         ];
     }
@@ -275,7 +332,7 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
 
         return [
             'op' => $op,
-            'args' => \reset($element),
+            'args' => \current($element),
             'return' => $return,
         ];
     }
@@ -287,34 +344,11 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
      */
     protected function elementToCode($element): string
     {
-        try {
+        if (\is_scalar($element) or \is_null($element)) {
+            return \var_export($element, true);
+        } else {
             $op = $this->parseOperation($element);
             return $this->operationToCode($op);
-        } catch (\InvalidArgumentException $e) {
-            if (\is_scalar($element) or \is_null($element)) {
-                return $this->scalarToCode($element);
-            } else {
-                throw new \RuntimeException($e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * @param mixed $element
-     * @return string
-     */
-    protected function scalarToCode($element): string
-    {
-        switch (\gettype($element)) {
-            case 'boolean':
-                return $element ? 'true' : 'false';
-            case 'integer':
-            case 'double':
-                return $element;
-            case 'string':
-                return "'" . \addcslashes($element, "'\0\\") . "'";
-            case 'NULL':
-                return 'null';
         }
     }
 
@@ -343,30 +377,10 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
     protected function operationToCode(array $op): string
     {
         if (isset($op['return'])) {
-            if (!\is_scalar($op['return'])) {
-                throw new \RuntimeException("Return value must be a scalar in \"{$op['op']}\"");
-            }
-            switch (\gettype($op['return'])) {
-                case 'boolean':
-                    $fn = 'is_bool';
-                    break;
-                case 'integer':
-                    $fn = 'is_integer';
-                    break;
-                case 'double':
-                    $fn = 'is_double';
-                    break;
-                case 'string':
-                    $fn = 'is_string';
-                    break;
-                default:
-                    $fn = null;
-            }
             return sprintf(
-                '(%s) and %s($success = %s)',
+                '(%s) and \gettype($success = %s)',
                 $this->op_callbacks[$op['op']]($op['args']),
-                $fn,
-                $this->scalarToCode($op['return'])
+                $this->elementToCode($op['return'])
             );
         } else {
             return $this->op_callbacks[$op['op']]($op['args']);

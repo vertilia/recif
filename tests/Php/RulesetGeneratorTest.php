@@ -5,9 +5,48 @@ namespace Recif\Platform\Php;
 class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
 {
     /**
+     * @dataProvider rulesetsOptionsProvider
+     */
+    public function testOptions($options, $pattern)
+    {
+        $rc = new RulesetGenerator(true, $options);
+        $code = $rc->generate();
+        $this->assertRegExp($pattern, $code);
+    }
+
+    public function rulesetsOptionsProvider()
+    {
+        return [
+            // options
+            [['declareStrictTypes' => true], '/^<\?php\s+declare\(strict_types=1\);/'],
+            [['namespace' => 'Test'], '/^<\?php\s+namespace\s+Test;/'],
+            [['className' => 'Class1'], '/^<\?php\s+class\s+Class1\s/'],
+            [['extends' => 'Class2'], '/^<\?php\s+class\s+\w+\s+extends\s+Class2\s/'],
+            [['implements' => 'Interface2'], '/^<\?php\s+class\s+\w+\s+implements\s+Interface2\s/'],
+            [
+                ['extends' => 'Class2', 'implements' => 'Interface2'],
+                '/^<\?php\s+class\s+\w+\s+extends\s+Class2\s+implements\s+Interface2\s/',
+            ],
+            [['contextType' => 'ContextType'], '/\sevaluate\s*\(ContextType\s+\$context\)/'],
+            [['returnType' => 'boolean'], '/\sevaluate\s*\(\$context\)\s*:\s*boolean\s*\{/'],
+            [['returnOnSuccess' => 'false'], '/\$success\s*=\s*false;/'],
+            [['returnOnFail' => 'null'], '/return\s+null;/'],
+            [
+                ['declareStrictTypes' => true, 'php5' => true],
+                '/^<\?php\s+class\s+\b/',
+            ],
+            [
+                ['returnType' => 'boolean', 'php5' => true],
+                '/\sevaluate\s*\(\$context\)\s*\{/',
+            ],
+
+        ];
+    }
+
+    /**
      * @dataProvider rulesetsWithoutContextProvider
      */
-    public function testWithoutContext($ruleset, $options, $pattern)
+    public function testWithoutContext($ruleset, $pattern, $options = null)
     {
         $rc = new RulesetGenerator($ruleset, $options);
         $code = $rc->generate();
@@ -17,89 +56,87 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
     public function rulesetsWithoutContextProvider()
     {
         return [
-            // options
-            [true, ['declareStrictTypes' => true], '/^<\?php\s+declare\(strict_types=1\);/'],
-            [true, ['namespace' => 'Test'], '/^<\?php\s+namespace\s+Test;/'],
-            [true, ['className' => 'Class1'], '/^<\?php\s+class\s+Class1\s/'],
-            [true, ['extends' => 'Class2'], '/^<\?php\s+class\s+\w+\s+extends\s+Class2\s/'],
-            [true, ['implements' => 'Interface2'], '/^<\?php\s+class\s+\w+\s+implements\s+Interface2\s/'],
-            [
-                true,
-                ['extends' => 'Class2', 'implements' => 'Interface2'],
-                '/^<\?php\s+class\s+\w+\s+extends\s+Class2\s+implements\s+Interface2\s/',
-            ],
-            [true, ['contextType' => 'ContextType'], '/\sevaluate\s*\(ContextType\s+\$context\)/'],
-            [true, ['returnType' => 'boolean'], '/\sevaluate\s*\(\$context\)\s*:\s*boolean\s*\{/'],
-            [true, ['returnOnSuccess' => 'false'], '/\$success\s*=\s*false;/'],
-            [true, ['returnOnFail' => 'null'], '/return\s+null;/'],
-            [
-                true,
-                ['declareStrictTypes' => true, 'php5' => true],
-                '/^<\?php\s+class\s+\b/',
-            ],
-            [
-                true,
-                ['returnType' => 'boolean', 'php5' => true],
-                '/\sevaluate\s*\(\$context\)\s*\{/',
-            ],
-
             // scalars and null
-            [true, null, '/\(true\)/'],
-            [false, null, '/\(false\)/'],
-            [null, null, '/\(null\)/'],
-            [1, null, '/\(1\)/'],
-            [1.5, null, '/\(1\.5\)/'],
-            [-1.5, null, '/\(-1\.5\)/'],
-            ['string', null, '/\(\'string\'\)/'],
-            ["o'string", null, "/\('o\\\'string'\)/"],
-            ["o\tstring", null, "/\('o\tstring'\)/"],
-            ['o\tstring', null, "/\('o\\\\tstring'\)/"],
-            ['o\\string', null, "/\('o\\\\string'\)/"],
-            ['Вася', null, "/\('Вася'\)/"],
+            [true, '/\(true\)/i'],
+            [false, '/\(false\)/i'],
+            [null, '/\(null\)/i'],
+            [1, '/\(1\)/'],
+            [1.5, '/\(1\.5\)/'],
+            [-1.5, '/\(-1\.5\)/'],
+            ['string', '/\(\'string\'\)/'],
+            ["o'string", "/\('o\\\'string'\)/"],
+            ["o\tstring", "/\('o\tstring'\)/"],
+            ['o\tstring', "/\('o\\\\tstring'\)/"],
+            ['o\\string', "/\('o\\\\string'\)/"],
+            ['Вася', "/\('Вася'\)/"],
 
             // single operations
-            [['cx' => ''], null, '/\$context/'],
-            [['cx' => 'country'], null, '/\$context\[\'country\'\]/'],
-            [['cx' => 'country'], ['php5' => true], '/isset\(\$context\[\'country\'\]\)/'],
-            [['cx' => 'countries.0'], null, '/\$context\[\'countries\']\[0\]/'],
-            [['cx' => "country.o\\name"], null, '/\$context\[\'country\']\[\'o\\\\name\'\]/'],
 
-            [['eq' => [1, 2]], null, '/\(\(?1\)?\s?==\s?\(?2\)?\)/'],
-            [['ne' => [1, 2]], null, '/\(\(?1\)?\s?!=\s?\(?2\)?\)/'],
-            [['lt' => [1, 2]], null, '/\(\(?1\)?\s?<\s?\(?2\)?\)/'],
-            [['le' => [1, 2]], null, '/\(\(?1\)?\s?<=\s?\(?2\)?\)/'],
-            [['gt' => [1, 2]], null, '/\(\(?1\)?\s?>\s?\(?2\)?\)/'],
-            [['ge' => [1, 2]], null, '/\(\(?1\)?\s?>=\s?\(?2\)?\)/'],
-            
-            [['or' => [0, 1, 2]], null, '/\(\(?0\)?\s?or\s?\(?1\)?\s?or\s?\(?2\)?\)/'],
-            [['and' => [0, 1, 2]], null, '/\(\(?0\)?\s?and\s?\(?1\)?\s?and\s?\(?2\)?\)/'],
-            [['not' => false], null, '/\(!\(?false\)?\)/'],
-            
-            [['in' => ['a', ['a', 'b', 'c']]], null, "/\(\\\\?in_array\(['\"]a['\"],\s?\[[abc,'\" ]+\]\)\)/"],
-            
+            // context
+            [['cx' => ''], '/\$context/'],
+            [['cx' => 'country'], '/\$context\[\'country\'\]/'],
+            [['cx' => 'country'], '/isset\(\$context\[\'country\'\]\)/', ['php5' => true]],
+            [['cx' => 'countries.0'], '/\$context\[\'countries\']\[0\]/'],
+            [['cx' => "country.o\\name"], '/\$context\[\'country\']\[\'o\\\\name\'\]/'],
+
+            // comparison
+            [['eq' => [1, 2]], '/\(\(?1\)?\s?==\s?\(?2\)?\)/'],
+            [['ne' => [1, 2]], '/\(\(?1\)?\s?!=\s?\(?2\)?\)/'],
+            [['lt' => [1, 2]], '/\(\(?1\)?\s?<\s?\(?2\)?\)/'],
+            [['le' => [1, 2]], '/\(\(?1\)?\s?<=\s?\(?2\)?\)/'],
+            [['gt' => [1, 2]], '/\(\(?1\)?\s?>\s?\(?2\)?\)/'],
+            [['ge' => [1, 2]], '/\(\(?1\)?\s?>=\s?\(?2\)?\)/'],
+
+            // logical
+            [['or' => [0, 1, 2]], '/\(\(?0\)?\s?or\s?\(?1\)?\s?or\s?\(?2\)?\)/'],
+            [['and' => [0, 1, 2]], '/\(\(?0\)?\s?and\s?\(?1\)?\s?and\s?\(?2\)?\)/'],
+            [['not' => false], '/\(!\(?false\)?\)/'],
+
+            // math
+            [['mod' => [121, 100]], '/\b121\b.*%.*\b100\b/'],
+            [['rnd' => [4000, 4999]], '/\b4000\b.*,.*\b4999\b/'],
+
+            // arrays
+            [['in' => ['a', ['a', 'b', 'c']]], "/\(\\\\?in_array\(['\"]a['\"],\s?\[[abc,'\" ]+\]\)\)/"],
+
+            // strings
             [
                 ['sub' => ['sentence with words', 'word']],
-                null,
                 "/\(\\\\?strpos\(['\"][a-z ]+['\"],\s?['\"]word['\"]\)\s?\!==\s?false\)/"
             ],
             [
-                ['re' => ['121352', '^\d+$']],
-                null,
+                ['re' => ['121352', '/^\d+$/']],
                 "/\(\\\\?preg_match\(['\"][^'\"]+['\"],\s?['\"]121352['\"]\)\)/"
             ],
 
+            // flatten
+            [['_' => true], '/\bif\s*\(\s*true\s*\)/'],
+            [['_' => 'string'], '/\bif\s*\(.*string.*\)/'],
+            [['_' => ['a', 'b']], "/'a'\s*,\s*'b'/"],
+            [['_' => ['a', 'b' => 'c']], "/'a'\s*,\s*'b'\s*=>\s*'c'/"],
+
             // multiple operations
-            [['eq' => [0, ["not"=>1]]], null, '/\(\(?0\)?\s?==\s?\(?!1\)?\)/'],
+
+            // comparison
+            [['eq' => [0, ['not' => 1]]], '/\(\(?0\)?\s?==\s?\(?!1\)?\)/'],
             [
-                ['and' => [true, ["not"=>false]]],
-                null,
+                ['and' => [true, ['not' => false]]],
                 '/\(\(?true\)?\s?and\s?\(?!\(?false\)?\)?\)/'
+            ],
+
+            // flatten
+            [['_' => [1, ['_' => []], 3]], "/\b1\s*,\s*(\[\s*\]|array\(\s*\))\s*,\s*3\b/"],
+            [['_' => ['a' => ['_' => ['b' => 'c']]]], "/'a'\s*=>.*'b'\s*=>\s*'c'/"],
+
+            // nafive function call
+            [
+                ['fn' => ['Currencies::getRateForCountryAndTime', ['cx' => 'country'], ['fn' => ['time']]]],
+                '/Currencies::getRateForCountryAndTime\s*\(.*\$context.*,\s*\btime\s*\(\s*\)\s*\)/'
             ],
 
             // examples
             [
                 \json_decode('{"gt": [{"cx":""}, 10]}', true),
-                null,
                 '/\(\(?\$context\)?\s?>\s?\(?10\)?\)/',
             ],
             [
@@ -112,7 +149,6 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
                     }',
                     true
                 ),
-                null,
                 '/\(\(?\$context\)?\s?<=\s?\(?100\)?\)/',
             ],
             [
@@ -137,7 +173,6 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
                     }',
                     true
                 ),
-                null,
                 '/North America/',
             ]
         ];
@@ -164,7 +199,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
 
         // run the test with specified context
         $ruleset = new $classname();
-        $this->assertTrue($expected === $ruleset->evaluate($context));
+        $this->assertTrue($expected === $ruleset->evaluate($context), $code);
 
         // remove test file
         \unlink($code_file);
@@ -213,7 +248,47 @@ EOJ3
 
         return [
             [true, null, true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [true, null, true, ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__],
+            [
+                true,
+                null,
+                true,
+                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+            ],
+            [
+                ['lt' => [['fn' => ['strtotime', 'yesterday']], ['cx' => '']]],
+                time(),
+                true,
+                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+            ],
+
+            // returns
+            [
+                [
+                    'lt' => [['fn' => ['strtotime', 'yesterday']], ['cx' => '']],
+                    'return' => ['fn' => ['strtotime', 'tomorrow']]
+                ],
+                \strtotime('today'),
+                \strtotime('tomorrow'),
+                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+            ],
+            [
+                [
+                    'in' => [['fn' => ['\strtolower', ['cx' => '']]], ['fr', 'de', 'it']],
+                    'return' => ['_' => ['EUR', 1]]
+                ],
+                'FR',
+                ['EUR', 1],
+                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+            ],
+            [
+                [
+                    '_' => true,
+                    'return' => ['cx' => 'country']
+                ],
+                ['country' => 'FR'],
+                'FR',
+                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+            ],
 
             // example 1
             [$example1, -1, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],

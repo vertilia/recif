@@ -6,7 +6,7 @@ Rule engine parser that translates conditions from rule file in json or yaml for
 
 When businesses express new or updated rulesets, they may be either coded by programmers into the existing information system, or they may be declared in a special dialect that the system may parse and evaluate. In this case programmer's intervention is not needed, but the parsing and evaluation time may be significant. Each time the system needs to evaluate conditions from a ruleset for specific context (for example, define product segment) the system needs to parse the rule file, process conditions starting at the top level until the matching rule found, all this recursively calling methods for each operation mentioned in a ruleset.
 
-With recif, when rulesets are updated in a rule file we call the converter that translates the rules into a native code. That code represents the ruleset conditions from the file. All operations are already translated to native constructs like OR, AND etc, so the execution of the full ruleset is optimal. To use that class inside your project instantiate the object and call its `evaluate()` method passing the context as its parameter. `evaluate()` will return `true` (or corresponding value) if match found, or `false` if passed context does not match any condition.
+With recif, when rulesets are updated in a rule file we call the converter that translates the rules into a native code. That code represents the ruleset conditions from the file. All operations are already translated to native constructs like OR, AND etc, so the execution of the full ruleset is optimal. To use that class inside your project instantiate the object and call its `evaluate()` method passing the context as its parameter. `evaluate()` will return `true` (or corresponding value) if match found, or `false` if passed context does not match any condition (yes, you may provide your own return value).
 
 ## Example 1
 
@@ -117,7 +117,7 @@ echo '{"gt":[{"cx":""},0]}' | recif -n MyNamespace\\Level2 -r boolean
 
 Rule file contains a tree of conditions starting with a root condition.
 
-Each condition is an object with a single required entry containing operation name and arguments and optional `return` entry containing returned value.
+Each condition is an object with a single required entry containing operation name as key and arguments as value. An optional `return` entry may contain returned value for the case if operation matches, otherwise the default `true` will be returned.
 
 Operators like `or` must contain an array of arguments. Unary operators like `not` may operate on a single value, not an array. See [Operations reference]() for the full list of available operations.
 
@@ -198,6 +198,20 @@ Example: `{"not": {"lt": [{"cx":""}, 0]}}`
 
 Meaning: `! ($context < 0)`
 
+### Math operations
+
+`mod` - modulo (arguments: value, modulo)
+
+Example: `{"mod": [{"cx":""}, 10]}`
+
+Meaning: `$context % 10`
+
+`rnd` - random integer number within range (arguments: min, max)
+
+Example: `{"rnd": [1, 10]}`
+
+Meaning: `rand(1, 10)`
+
 ### Array operations
 
 `in` - element exists in array (arguments: element, array)
@@ -214,11 +228,27 @@ Example: `{"sub": [{"cx":""}, "word"]}`
 
 Meaning: `mb_stripos($context, "word") !== false`
 
-`re` - string matches regular expression (arguments: string, regex). Unicode mode enabled.
+`re` - string matches regular expression (arguments: string, regex).
 
-Example: `{"re": [{"cx":""}, "^[a-fA-F0-9]+$"]}`
+Example: `{"re": [{"cx":""}, "/^\w+$/u"]}`
 
-Meaning: `preg_match("/^[a-fA-F0-9]+$/u", $context)`
+Meaning: `preg_match('/^\w+$/u', $context)`
+
+### Flatten operator
+
+`_` (underscore) - uses argument value as is (argument of any type).
+
+Example: `{"_": true}`, `{"_": ["a": "b"]}`, `{"_": [1, {"_": []}, 3]}`
+
+Meaning: `true`, `['a' => 'b']`, `[1, [], 3]`
+
+### Native function call
+
+`fn` - calls native function with provided params (arguments: function name, param1, ...).
+
+Example: `{"fn": ["Currencies::getRateForCountry", {"cx":"country"}]}`
+
+Meaning: `Currencies::getRateForCountry($context['country'])`
 
 ## Code examples
 
