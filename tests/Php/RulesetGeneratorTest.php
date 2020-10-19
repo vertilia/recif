@@ -19,18 +19,19 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
         return [
             // options
             [['declareStrictTypes' => true], '/^<\?php\s+declare\(strict_types=1\);/'],
-            [['namespace' => 'Test'], '/^<\?php\s+namespace\s+Test;/'],
-            [['className' => 'Class1'], '/^<\?php\s+class\s+Class1\s/'],
-            [['extends' => 'Class2'], '/^<\?php\s+class\s+\w+\s+extends\s+Class2\s/'],
-            [['implements' => 'Interface2'], '/^<\?php\s+class\s+\w+\s+implements\s+Interface2\s/'],
+            [['namespace' => 'Test\\Ruleset'], '/^namespace\s+Test\\\\Ruleset;/m'],
+            [['className' => 'Class1'], '/^class\s+Class1\b/m'],
+            [['extends' => 'Class2'], '/^class\s+\w+\s+extends\s+Class2\b/m'],
+            [['implements' => 'Interface2'], '/^class\s+\w+\s+implements\s+Interface2\b/m'],
             [
                 ['extends' => 'Class2', 'implements' => 'Interface2'],
-                '/^<\?php\s+class\s+\w+\s+extends\s+Class2\s+implements\s+Interface2\s/',
+                '/^\bclass\s+\w+\s+extends\s+Class2\s+implements\s+Interface2\b/m',
             ],
-            [['contextType' => 'ContextType'], '/\sevaluate\s*\(ContextType\s+\$context\)/'],
-            [['returnType' => 'boolean'], '/\sevaluate\s*\(\$context\)\s*:\s*boolean\s*\{/'],
+            [['contextType' => 'ContextType'], '/function\s+evaluate\s*\(ContextType\s+\$context\)/'],
+            [['returnType' => 'boolean'], '/function\s+evaluate\s*\(\$context\)\s*:\s*boolean\s*\{/'],
             [['returnOnSuccess' => 'false'], '/\$success\s*=\s*false;/'],
             [['returnOnFail' => 'null'], '/return\s+null;/'],
+            // php5 mode incompatible with strict_types and return type directives
             [
                 ['declareStrictTypes' => true, 'php5' => true],
                 '/^<\?php\s+class\s+\b/',
@@ -44,147 +45,14 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * @dataProvider rulesetsWithoutContextProvider
-     */
-    public function testWithoutContext($ruleset, $pattern, $options = null)
-    {
-        $rc = new RulesetGenerator($ruleset, $options);
-        $code = $rc->generate();
-        $this->assertRegExp($pattern, $code);
-    }
-
-    public function rulesetsWithoutContextProvider()
-    {
-        return [
-            // scalars and null
-            [true, '/\(true\)/i'],
-            [false, '/\(false\)/i'],
-            [null, '/\(null\)/i'],
-            [1, '/\(1\)/'],
-            [1.5, '/\(1\.5\)/'],
-            [-1.5, '/\(-1\.5\)/'],
-            ['string', '/\(\'string\'\)/'],
-            ["o'string", "/\('o\\\'string'\)/"],
-            ["o\tstring", "/\('o\tstring'\)/"],
-            ['o\tstring', "/\('o\\\\tstring'\)/"],
-            ['o\\string', "/\('o\\\\string'\)/"],
-            ['Вася', "/\('Вася'\)/"],
-
-            // single operations
-
-            // context
-            [['cx' => ''], '/\$context/'],
-            [['cx' => 'country'], '/\$context\[\'country\'\]/'],
-            [['cx' => 'country'], '/isset\(\$context\[\'country\'\]\)/', ['php5' => true]],
-            [['cx' => 'countries.0'], '/\$context\[\'countries\']\[0\]/'],
-            [['cx' => "country.o\\name"], '/\$context\[\'country\']\[\'o\\\\name\'\]/'],
-
-            // comparison
-            [['eq' => [1, 2]], '/\(\(?1\)?\s?==\s?\(?2\)?\)/'],
-            [['ne' => [1, 2]], '/\(\(?1\)?\s?!=\s?\(?2\)?\)/'],
-            [['lt' => [1, 2]], '/\(\(?1\)?\s?<\s?\(?2\)?\)/'],
-            [['le' => [1, 2]], '/\(\(?1\)?\s?<=\s?\(?2\)?\)/'],
-            [['gt' => [1, 2]], '/\(\(?1\)?\s?>\s?\(?2\)?\)/'],
-            [['ge' => [1, 2]], '/\(\(?1\)?\s?>=\s?\(?2\)?\)/'],
-
-            // logical
-            [['or' => [0, 1, 2]], '/\(\(?0\)?\s?or\s?\(?1\)?\s?or\s?\(?2\)?\)/'],
-            [['and' => [0, 1, 2]], '/\(\(?0\)?\s?and\s?\(?1\)?\s?and\s?\(?2\)?\)/'],
-            [['not' => false], '/\(!\(?false\)?\)/'],
-
-            // math
-            [['mod' => [121, 100]], '/\b121\b.*%.*\b100\b/'],
-            [['rnd' => [4000, 4999]], '/\b4000\b.*,.*\b4999\b/'],
-
-            // arrays
-            [['in' => ['a', ['a', 'b', 'c']]], "/\(\\\\?in_array\(['\"]a['\"],\s?\[[abc,'\" ]+\]\)\)/"],
-
-            // strings
-            [
-                ['sub' => ['sentence with words', 'word']],
-                "/\(\\\\?strpos\(['\"][a-z ]+['\"],\s?['\"]word['\"]\)\s?\!==\s?false\)/"
-            ],
-            [
-                ['re' => ['121352', '/^\d+$/']],
-                "/\(\\\\?preg_match\(['\"][^'\"]+['\"],\s?['\"]121352['\"]\)\)/"
-            ],
-
-            // flatten
-            [['_' => true], '/\bif\s*\(\s*true\s*\)/'],
-            [['_' => 'string'], '/\bif\s*\(.*string.*\)/'],
-            [['_' => ['a', 'b']], "/'a'\s*,\s*'b'/"],
-            [['_' => ['a', 'b' => 'c']], "/'a'\s*,\s*'b'\s*=>\s*'c'/"],
-
-            // multiple operations
-
-            // comparison
-            [['eq' => [0, ['not' => 1]]], '/\(\(?0\)?\s?==\s?\(?!1\)?\)/'],
-            [
-                ['and' => [true, ['not' => false]]],
-                '/\(\(?true\)?\s?and\s?\(?!\(?false\)?\)?\)/'
-            ],
-
-            // flatten
-            [['_' => [1, ['_' => []], 3]], "/\b1\s*,\s*(\[\s*\]|array\(\s*\))\s*,\s*3\b/"],
-            [['_' => ['a' => ['_' => ['b' => 'c']]]], "/'a'\s*=>.*'b'\s*=>\s*'c'/"],
-
-            // nafive function call
-            [
-                ['fn' => ['Currencies::getRateForCountryAndTime', ['cx' => 'country'], ['fn' => ['time']]]],
-                '/Currencies::getRateForCountryAndTime\s*\(.*\$context.*,\s*\btime\s*\(\s*\)\s*\)/'
-            ],
-
-            // examples
-            [
-                \json_decode('{"gt": [{"cx":""}, 10]}', true),
-                '/\(\(?\$context\)?\s?>\s?\(?10\)?\)/',
-            ],
-            [
-                \json_decode(
-                    '{
-                        "and": [
-                        {"ge": [{"cx":""}, 0]},
-                        {"le": [{"cx":""}, 100]}
-                        ]
-                    }',
-                    true
-                ),
-                '/\(\(?\$context\)?\s?<=\s?\(?100\)?\)/',
-            ],
-            [
-                \json_decode(
-                    '{
-                      "or": [
-                        {
-                          "and": [
-                            {"eq": [{"cx":"country"}, "US"]},
-                            {"eq": [{"cx":"currency"}, "USD"]}
-                          ],
-                          "return": "North America"
-                        },
-                        {
-                          "and": [
-                            {"in": [{"cx":"country"}, ["DE", "ES", "FR", "IT"]]},
-                            {"eq": [{"cx":"currency"}, "EUR"]}
-                          ],
-                          "return": "Europe"
-                        }
-                      ]
-                    }',
-                    true
-                ),
-                '/North America/',
-            ]
-        ];
-    }
-
-    /**
      * @dataProvider rulesetsWithContextProvider
      */
-    public function testWithContext($ruleset, $context, $expected, $options, $classname)
+    public function testWithContext($ruleset, $context, $expected, $line)
     {
+        $classname = "Ruleset$line";
+
         // produce the code
-        $rc = new RulesetGenerator($ruleset, $options);
+        $rc = new RulesetGenerator($ruleset, ['className' => $classname]);
         $code = $rc->generate();
         $this->assertStringStartsWith('<?php', $code);
 
@@ -236,7 +104,7 @@ EOJ2
     },
     {
       "and": [
-        {"in": [{"cx":"country"}, ["DE", "ES", "FR", "IT"]]},
+        {"in": [{"cx":"country"}, {"_": ["DE", "ES", "FR", "IT"]}]},
         {"eq": [{"cx":"currency"}, "EUR"]}
       ],
       "return": "Europe"
@@ -247,21 +115,157 @@ EOJ3
 , true);
 
         return [
-            [true, null, true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [
-                true,
-                null,
-                true,
-                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
-            ],
-            [
-                ['lt' => [['fn' => ['strtotime', 'yesterday']], ['cx' => '']]],
-                time(),
-                true,
-                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
-            ],
+            // scalars and null
 
-            // returns
+            [true, true, true, __LINE__],
+            [true, false, true, __LINE__],
+            [true, null, true, __LINE__],
+            [true, 1, true, __LINE__],
+            [true, "Вася", true, __LINE__],
+            [true, [], true, __LINE__],
+
+            [false, true, false, __LINE__],
+            [false, false, false, __LINE__],
+            [false, null, false, __LINE__],
+            [false, 1, false, __LINE__],
+            [false, "Вася", false, __LINE__],
+            [false, [], false, __LINE__],
+
+            [null, true, false, __LINE__],
+            [null, false, false, __LINE__],
+            [null, null, false, __LINE__],
+            [null, 1, false, __LINE__],
+            [null, "Вася", false, __LINE__],
+            [null, [], false, __LINE__],
+
+            [1, true, true, __LINE__],
+            [1, false, true, __LINE__],
+            [1, null, true, __LINE__],
+            [1, 1, true, __LINE__],
+            [1, "Вася", true, __LINE__],
+            [1, [], true, __LINE__],
+
+            ["Вася", true, true, __LINE__],
+            ["Вася", false, true, __LINE__],
+            ["Вася", null, true, __LINE__],
+            ["Вася", 1, true, __LINE__],
+            ["Вася", "Вася", true, __LINE__],
+            ["Вася", [], true, __LINE__],
+
+            [['_' => []], true, false, __LINE__],
+            [['_' => []], false, false, __LINE__],
+            [['_' => []], null, false, __LINE__],
+            [['_' => []], 1, false, __LINE__],
+            [['_' => []], "Вася", false, __LINE__],
+            [['_' => []], [], false, __LINE__],
+
+            // strings
+
+            ["string", null, true, __LINE__],
+            [' ', null, true, __LINE__],
+            ['0.0', null, true, __LINE__],
+            ["0string", null, true, __LINE__],
+            ['', null, false, __LINE__],
+            ['0', null, false, __LINE__],
+
+            // context
+
+            [['cx' => ''], true, true, __LINE__],
+            [['cx' => ''], false, false, __LINE__],
+            [['cx' => ''], null, false, __LINE__],
+            [['cx' => ''], 1, true, __LINE__],
+            [['cx' => ''], "Вася", true, __LINE__],
+            [['cx' => ''], [], false, __LINE__],
+
+            [['cx' => 'country'], ['country' => 'FR'], true, __LINE__],
+            [['cx' => 'country'], ['countrix' => 'FR'], false, __LINE__],
+            [['cx' => 'country'], null, false, __LINE__],
+            [['cx' => 'countries.0'], ['countries' => ['DE', 'FR', 'IT']], true, __LINE__],
+            [['cx' => 'countries.0'], ['countries' => [1=>'DE', 'FR', 'IT']], false, __LINE__],
+            [['cx' => 'countries.0'], null, false, __LINE__],
+            [['cx' => 'country.o\\name'], ['country' => ['o\\name' => 'ON']], true, __LINE__],
+            [['cx' => 'country.o\\name'], ['country' => ['o-name' => 'ON']], false, __LINE__],
+            [['cx' => 'country.o\\name'], null, false, __LINE__],
+
+            // comparisons
+
+            [['eq' => [1, ['cx' => '']]], 2, false, __LINE__],
+            [['eq' => [2, ['cx' => '']]], 2, true, __LINE__],
+            [['ne' => [1, ['cx' => '']]], 2, true, __LINE__],
+            [['ne' => [2, ['cx' => '']]], 2, false, __LINE__],
+            [['lt' => [1, ['cx' => '']]], 2, true, __LINE__],
+            [['lt' => [2, ['cx' => '']]], 2, false, __LINE__],
+            [['le' => [1, ['cx' => '']]], 2, true, __LINE__],
+            [['le' => [2, ['cx' => '']]], 2, true, __LINE__],
+            [['gt' => [1, ['cx' => '']]], 2, false, __LINE__],
+            [['gt' => [2, ['cx' => '']]], 2, false, __LINE__],
+            [['ge' => [1, ['cx' => '']]], 2, false, __LINE__],
+            [['ge' => [2, ['cx' => '']]], 2, true, __LINE__],
+
+            // complex comparisons
+
+            [['eq' => [0, ['not' => 1]]], null, true, __LINE__],
+            [['and' => [true, ['not' => false]]], null, true, __LINE__],
+
+            // logical
+
+            [['or' => [0, ['cx' => '']]], 0, false, __LINE__],
+            [['or' => [0, ['cx' => '']]], 1, true, __LINE__],
+            [['or' => [1, ['cx' => '']]], 0, true, __LINE__],
+            [['or' => [1, ['cx' => '']]], 1, true, __LINE__],
+
+            [['and' => [0, ['cx' => '']]], 0, false, __LINE__],
+            [['and' => [0, ['cx' => '']]], 1, false, __LINE__],
+            [['and' => [1, ['cx' => '']]], 0, false, __LINE__],
+            [['and' => [1, ['cx' => '']]], 1, true, __LINE__],
+
+            [['not' => ['cx' => '']], 1, false, __LINE__],
+            [['not' => ['cx' => '']], 0, true, __LINE__],
+
+            // math
+
+            [['eq' => [21, ['mod' => [['cx' => ''], 100]]]], 120, false, __LINE__],
+            [['eq' => [21, ['mod' => [['cx' => ''], 100]]]], 121, true, __LINE__],
+            [['eq' => [21, ['mod' => [['cx' => ''], 100]]]], 122, false, __LINE__],
+            [['lt' => [21, ['rnd' => [['cx' => 'lo'], ['cx' => 'hi']]]]], ['lo' => 22, 'hi' => 25], true, __LINE__],
+            [['lt' => [21, ['rnd' => [['cx' => 'lo'], ['cx' => 'hi']]]]], ['lo' => 10, 'hi' => 20], false, __LINE__],
+
+            // arrays
+
+            [['in' => [['cx' => ''], ['_' => ['a', 'b', 'c']]]], 'a', true, __LINE__],
+            [['in' => [['cx' => ''], ['_' => ['a', 'b', 'c']]]], 'x', false, __LINE__],
+
+            // strings
+
+            [['sub' => [['cx' => ''], 'медвед']], 'Превед, Медвед!', true, __LINE__],
+            [['sub' => [['cx' => ''], 'МЕДВЕД']], 'Превед, Медвед!', true, __LINE__],
+            [['sub' => [['cx' => ''], 'лошадь']], 'Превед, Медвед!', false, __LINE__],
+            [['re' => [['cx' => ''], '/^\d{5}$/']], '00000', true, __LINE__],
+            [['re' => [['cx' => ''], '/^\d{5}$/']], '12345', true, __LINE__],
+            [['re' => [['cx' => ''], '/^\d{5}$/']], ' 12345', false, __LINE__],
+            [['re' => [['cx' => ''], '/^\d{5}$/']], '12345 ', false, __LINE__],
+            [['re' => [['cx' => ''], '/^\d{5}$/']], '123', false, __LINE__],
+
+            // inlines and returns
+
+            [
+                [
+                    '_' => true,
+                    'return' => ['_' => [1, ['_' => []], 3]]
+                ],
+                null,
+                [1, [], 3],
+                __LINE__
+            ],
+            [
+                [
+                    '_' => true,
+                    'return' => ['_' => ['a' => ['_' => ['b' => 'c']]]]
+                ],
+                null,
+                ['a' => ['b' => 'c']],
+                __LINE__
+            ],
             [
                 [
                     'lt' => [['fn' => ['strtotime', 'yesterday']], ['cx' => '']],
@@ -269,16 +273,16 @@ EOJ3
                 ],
                 \strtotime('today'),
                 \strtotime('tomorrow'),
-                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+                __LINE__
             ],
             [
                 [
-                    'in' => [['fn' => ['\strtolower', ['cx' => '']]], ['fr', 'de', 'it']],
+                    'in' => [['fn' => ['\strtolower', ['cx' => '']]], ['_' => ['fr', 'de', 'it']]],
                     'return' => ['_' => ['EUR', 1]]
                 ],
                 'FR',
                 ['EUR', 1],
-                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+                __LINE__
             ],
             [
                 [
@@ -287,49 +291,46 @@ EOJ3
                 ],
                 ['country' => 'FR'],
                 'FR',
-                ['namespace' => 'MyTest', 'className' => 'Ruleset'.__LINE__], '\MyTest\Ruleset'.__LINE__
+                __LINE__
+            ],
+
+            // nafive function call
+
+            [
+                ['and' => [
+                    ['lt' => [['fn' => ['strtotime', 'yesterday']], ['cx' => '']]],
+                    ['gt' => [['fn' => ['strtotime', 'tomorrow']], ['cx' => '']]]
+                ]],
+                time(),
+                true,
+                __LINE__
             ],
 
             // example 1
-            [$example1, -1, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example1, 0, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example1, 1, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example1, 10, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example1, 11, true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example1, 'string', false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example1, [], true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__], // @WTF?
-            [$example1, (object)[], false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
+            [$example1, -1, false, __LINE__],
+            [$example1, 0, false, __LINE__],
+            [$example1, 1, false, __LINE__],
+            [$example1, 10, false, __LINE__],
+            [$example1, 11, true, __LINE__],
+            [$example1, 'string', false, __LINE__],
+            [$example1, [], true, __LINE__], // @WTF?
+            [$example1, (object)[], false, __LINE__],
 
             // example 2
-            [$example2, -1, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, 0, true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, 1, true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, 100, true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, 101, false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, 'string', true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, [], false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
-            [$example2, (object)[], true, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__], // @WTF?
+            [$example2, -1, false, __LINE__],
+            [$example2, 0, true, __LINE__],
+            [$example2, 1, true, __LINE__],
+            [$example2, 100, true, __LINE__],
+            [$example2, 101, false, __LINE__],
+            [$example2, 'string', true, __LINE__],
+            [$example2, [], false, __LINE__],
+            [$example2, (object)[], true, __LINE__], // @WTF?
 
             // example 3
-            [
-                $example3,
-                ['country' => 'US', 'currency' => 'USD'],
-                'North America',
-                ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__
-            ],
-            [
-                $example3,
-                ['country' => 'FR', 'currency' => 'EUR'],
-                'Europe',
-                ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__
-            ],
-            [
-                $example3,
-                ['country' => 'FR', 'currency' => 'USD'],
-                false,
-                ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__
-            ],
-            [$example3, [], false, ['className' => 'Ruleset'.__LINE__], 'Ruleset'.__LINE__],
+            [$example3, ['country' => 'US', 'currency' => 'USD'], 'North America', __LINE__],
+            [$example3, ['country' => 'FR', 'currency' => 'EUR'], 'Europe', __LINE__],
+            [$example3, ['country' => 'FR', 'currency' => 'USD'], false, __LINE__],
+            [$example3, [], false, __LINE__],
         ];
     }
 }

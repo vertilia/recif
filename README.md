@@ -57,7 +57,7 @@ If condition matches it will return continent name for the context (`North Ameri
     },
     {
       "and": [
-        {"in": [{"cx":"country"}, ["DE", "ES", "FR", "IT"]]},
+        {"in": [{"cx":"country"}, {"_": ["DE", "ES", "FR", "IT"]}]},
         {"eq": [{"cx":"currency"}, "EUR"]}
       ],
       "return": "Europe"
@@ -65,6 +65,8 @@ If condition matches it will return continent name for the context (`North Ameri
   ]
 }
 ```
+
+Note: to represent an array you need to use a special `{"_": ...}` inline operator.
 
 ## Installation
 
@@ -123,8 +125,8 @@ Operators like `or` must contain an array of arguments. Unary operators like `no
 
 Each argument may have one of the following forms:
 
-- literal value or array (normally used to compare the value with context field), like `"US"` or `["DE", "ES", "FR", "IT"]`;
-- object (representing context or another operation), like `{"cx":"currency"}` or `{"eq": [{"cx":"country"}, "US"]}`.
+- literal value or array (normally used to compare the value with context field), like `true` or `"US"`;
+- object (representing context or another operation), like `{"cx":"currency"}` or `{"eq": [{"cx":"country"}, "US"]}` or `{"_": ["DE", "ES", "FR", "IT"]}`.
 
 Returned value represents the value that is returned to the outer operation when the corresponding condition evaluates to `true`. It may be declared as any type. If value is an object, it may represent context or one of its properties, like `{"cx":""}` or  `{"cx":"currency.iso_name"}`. In this case the value of this element or property will be returned.
 
@@ -216,7 +218,7 @@ Meaning: `rand(1, 10)`
 
 `in` - element exists in array (arguments: element, array)
 
-Example: `{"in": [{"cx":""}, [1, 2, 3, 5, 8, 13]]}`
+Example: `{"in": [{"cx":""}, {"_": [1, 2, 3, 5, 8, 13]}]}`
 
 Meaning: `in_array($context, [1, 2, 3, 5, 8, 13])`
 
@@ -234,7 +236,7 @@ Example: `{"re": [{"cx":""}, "/^\w+$/u"]}`
 
 Meaning: `preg_match('/^\w+$/u', $context)`
 
-### Flatten operator
+### Inline operator
 
 `_` (underscore) - uses argument value as is (argument of any type).
 
@@ -328,7 +330,7 @@ Rule file:
     },
     {
       "and": [
-        {"in": [{"cx":"country"}, ["DE", "ES", "FR", "IT"]]},
+        {"in": [{"cx":"country"}, {"_": ["DE", "ES", "FR", "IT"]}]},
         {"eq": [{"cx":"currency"}, "EUR"]}
       ],
       "return": "Europe"

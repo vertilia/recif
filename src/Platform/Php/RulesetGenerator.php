@@ -123,7 +123,7 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
 
             // comparison operators
             'eq' => function ($args) {
-                return $this->op2Args('ne', '==', $args);
+                return $this->op2Args('eq', '==', $args);
             },
             'ne' => function ($args) {
                 return $this->op2Args('ne', '!=', $args);
@@ -132,13 +132,13 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
                 return $this->op2Args('lt', '<', $args);
             },
             'le' => function ($args) {
-                return $this->op2Args('lt', '<=', $args);
+                return $this->op2Args('le', '<=', $args);
             },
             'gt' => function ($args) {
                 return $this->op2Args('gt', '>', $args);
             },
             'ge' => function ($args) {
-                return $this->op2Args('gt', '>=', $args);
+                return $this->op2Args('ge', '>=', $args);
             },
 
             // logical operators
@@ -182,7 +182,7 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
                 return \sprintf(
                     '\\in_array(%s, %s)',
                     $this->elementToCode($args[0]),
-                    $this->arrayToCode('in', $args[1])
+                    $this->elementToCode($args[1])
                 );
             },
 
@@ -192,7 +192,7 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
                     throw new \LengthException("\"sub\" operation must have 2 arguments (text, substring)");
                 }
                 return \sprintf(
-                    '\\strpos(%s, %s) !== false',
+                    '\\mb_stripos(%s, %s) !== false',
                     $this->elementToCode($args[0]),
                     $this->elementToCode($args[1])
                 );
@@ -211,7 +211,7 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
                 );
             },
 
-            // flatten operator
+            // inline operator
             '_' => function ($args) {
                 if (\is_array($args)) {
                     $params = [];
@@ -350,24 +350,6 @@ class RulesetGenerator implements \Recif\IRulesetGenerator
             $op = $this->parseOperation($element);
             return $this->operationToCode($op);
         }
-    }
-
-    /**
-     * @param string $op
-     * @param array $elements
-     * @return string
-     */
-    protected function arrayToCode(string $op, array $elements): string
-    {
-        $parts = [];
-        foreach ($elements as $k => $el) {
-            if (!\is_int($k)) {
-                throw new \InvalidArgumentException("\"$op\" array must not have named keys, found key \"$k\"");
-            }
-            $parts[] = $this->elementToCode($el);
-        }
-
-        return \sprintf('[%s]', \implode(', ', $parts));
     }
 
     /**
