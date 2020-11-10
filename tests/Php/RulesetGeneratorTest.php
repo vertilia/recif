@@ -80,7 +80,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
   "gt": [{"cx":""}, 10]
 }
 EOJ1
-, true);
+        , true);
 
         $example2 = \json_decode(<<<EOJ2
 {
@@ -90,7 +90,7 @@ EOJ1
   ]
 }
 EOJ2
-, true);
+        , true);
 
         $example3 = \json_decode(<<<EOJ3
 {
@@ -112,7 +112,7 @@ EOJ2
   ]
 }
 EOJ3
-, true);
+        , true);
 
         return [
             // scalars and null
