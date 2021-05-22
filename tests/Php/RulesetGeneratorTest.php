@@ -11,7 +11,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
     {
         $rc = new RulesetGenerator(true, $options);
         $code = $rc->generate();
-        $this->assertRegExp($pattern, $code);
+        $this->assertMatchesRegularExpression($pattern, $code);
     }
 
     public function rulesetsOptionsProvider()
@@ -57,32 +57,32 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
         $this->assertStringStartsWith('<?php', $code);
 
         // write code to the temp file
-        $code_file = \tempnam(\sys_get_temp_dir(), 'test');
-        $this->assertGreaterThan(0, \file_put_contents($code_file, $code));
+        $code_file = tempnam(sys_get_temp_dir(), 'test');
+        $this->assertGreaterThan(0, file_put_contents($code_file, $code));
 
         // include the temp file (this will define the class)
-        $this->assertTrue(!\class_exists($classname));
+        $this->assertTrue(!class_exists($classname));
         include $code_file;
-        $this->assertTrue(\class_exists($classname));
+        $this->assertTrue(class_exists($classname));
 
         // run the test with specified context
         $ruleset = new $classname();
-        $this->assertTrue($expected === $ruleset->evaluate($context), $code);
+        $this->assertEquals($expected, $ruleset->evaluate($context), var_export($context, 1) . " -> $code");
 
         // remove test file
-        \unlink($code_file);
+        unlink($code_file);
     }
 
-    public function rulesetsWithContextProvider()
+    public function rulesetsWithContextProvider(): array
     {
-        $example1 = \json_decode(<<<EOJ1
+        $example1 = json_decode(<<<EOJ1
 {
   "gt": [{"cx":""}, 10]
 }
 EOJ1
         , true);
 
-        $example2 = \json_decode(<<<EOJ2
+        $example2 = json_decode(<<<EOJ2
 {
   "and": [
     {"ge": [{"cx":""}, 0]},
@@ -92,7 +92,7 @@ EOJ1
 EOJ2
         , true);
 
-        $example3 = \json_decode(<<<EOJ3
+        $example3 = json_decode(<<<EOJ3
 {
   "or": [
     {
@@ -271,8 +271,8 @@ EOJ3
                     'lt' => [['fn' => ['strtotime', 'yesterday']], ['cx' => '']],
                     'return' => ['fn' => ['strtotime', 'tomorrow']]
                 ],
-                \strtotime('today'),
-                \strtotime('tomorrow'),
+                strtotime('today'),
+                strtotime('tomorrow'),
                 __LINE__
             ],
             [
@@ -294,7 +294,7 @@ EOJ3
                 __LINE__
             ],
 
-            // nafive function call
+            // native function call
 
             [
                 ['and' => [
@@ -312,9 +312,6 @@ EOJ3
             [$example1, 1, false, __LINE__],
             [$example1, 10, false, __LINE__],
             [$example1, 11, true, __LINE__],
-            [$example1, 'string', false, __LINE__],
-            [$example1, [], true, __LINE__], // @WTF?
-            [$example1, (object)[], false, __LINE__],
 
             // example 2
             [$example2, -1, false, __LINE__],
@@ -322,9 +319,6 @@ EOJ3
             [$example2, 1, true, __LINE__],
             [$example2, 100, true, __LINE__],
             [$example2, 101, false, __LINE__],
-            [$example2, 'string', true, __LINE__],
-            [$example2, [], false, __LINE__],
-            [$example2, (object)[], true, __LINE__], // @WTF?
 
             // example 3
             [$example3, ['country' => 'US', 'currency' => 'USD'], 'North America', __LINE__],
