@@ -7,7 +7,9 @@
  * STDERR.
  */
 
-require __DIR__ . '/../vendor/autoload.php';
+require file_exists(__DIR__ . '/../../../autoload.php')
+    ? (__DIR__ . '/../../../autoload.php')
+    : (__DIR__ . '/../vendor/autoload.php');
 
 call_user_func(function() use ($argv){
     // read ruleset file from STDIN

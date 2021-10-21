@@ -19,6 +19,7 @@ class RulesetGenerator implements IRulesetGenerator
     protected ?string $implements;
     protected ?string $context_type;
     protected ?string $return_type;
+    protected array $context_refs = [];
     protected ?string $return_on_success;
     protected ?string $return_on_fail;
     protected ?string $php5;
@@ -91,6 +92,7 @@ class RulesetGenerator implements IRulesetGenerator
                 '/%ContextType%\s*/ui',
                 '/\s*%ReturnType%/ui',
                 '/%ReturnOnSuccess%/ui',
+                '/%ContextRefs%/ui',
                 '/%ReturnOnFail%/ui',
             ],
             [
@@ -102,6 +104,7 @@ class RulesetGenerator implements IRulesetGenerator
                 $this->context_type ? "$this->context_type " : null,
                 $this->return_type ? " : $this->return_type" : null,
                 $this->return_on_success,
+                implode(' ', $this->context_refs),
                 $this->return_on_fail,
             ],
             file_get_contents(__DIR__ . '/fragments/main.frg')
@@ -130,13 +133,18 @@ class RulesetGenerator implements IRulesetGenerator
                             $parts[] = "['" . addcslashes($tr, "'\0\\") . "']";
                         }
                     }
+
                     if (empty($parts)) {
                         return '$context';
                     }
+
                     $whole = implode('', $parts);
-                    return $this->php5
-                        ? sprintf('isset($context%s) ? $context%s : null', $whole, $whole)
-                        : sprintf('$context%s ?? null', $whole);
+                    $var_name = '$' . rtrim(preg_replace(['/\W/', '/__+/'], '_', "c_$whole"), '_');
+                    $this->context_refs[$var_name] = "$var_name = " . ($this->php5
+                            ? sprintf('isset($context%s) ? $context%s : null', $whole, $whole)
+                            : sprintf('$context%s ?? null', $whole)
+                        ) . ';';
+                    return "$var_name";
                 }
             },
 
@@ -144,8 +152,14 @@ class RulesetGenerator implements IRulesetGenerator
             'eq' => function ($args) {
                 return $this->op2Args('eq', '==', $args);
             },
+            '===' => function ($args) {
+                return $this->op2Args('===', '===', $args);
+            },
             'ne' => function ($args) {
                 return $this->op2Args('ne', '!=', $args);
+            },
+            '!==' => function ($args) {
+                return $this->op2Args('!==', '!==', $args);
             },
             'lt' => function ($args) {
                 return $this->op2Args('lt', '<', $args);

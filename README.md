@@ -121,7 +121,7 @@ Rule file contains a tree of conditions starting with a root condition.
 
 Each condition is an object with a single required entry containing operation name as key and arguments as value. An optional `return` entry may contain returned value for the case if operation matches, otherwise the default `true` will be returned.
 
-Operators like `or` must contain an array of arguments. Unary operators like `not` may operate on a single value, not an array. See [Operations reference]() for the full list of available operations.
+Operators like `or` must contain an array of arguments. Unary operators like `not` operate on a single value, not an array. See [Operations reference]() for the full list of available operations.
 
 Each argument may have one of the following forms:
 
@@ -132,7 +132,7 @@ Returned value represents the value that is returned to the outer operation when
 
 ## Operations reference
 
-Meanings below are given as php code.
+Examples below are given in json notation, meanings are given as php code.
 
 ### Context operator
 
@@ -150,11 +150,23 @@ Example: `{"eq": [{"cx":""}, 0]}`
 
 Meaning: `$context == 0`
 
+`===` - identical (equal and same type)
+
+Example: `{"===": [{"cx":""}, '15h']}`
+
+Meaning: `$context === '15h'`
+
 `ne` - not equal
 
-Example: `{"eq": [{"cx":""}, 0]}`
+Example: `{"ne": [{"cx":""}, 0]}`
 
 Meaning: `$context != 0`
+
+`!==` - not identical (not equal or different type)
+
+Example: `{"!==": [{"cx":""}, '15h']}`
+
+Meaning: `$context !== '15h'`
 
 `lt` - less than
 
