@@ -40,7 +40,6 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
                 ['returnType' => 'boolean', 'php5' => true],
                 '/\sevaluate\s*\(\$context\)\s*\{/',
             ],
-
         ];
     }
 
@@ -243,16 +242,27 @@ EOJ3
             [['in' => [['cx' => ''], ['_' => ['a', 'b', 'c']]]], 'a', true, __LINE__],
             [['in' => [['cx' => ''], ['_' => ['a', 'b', 'c']]]], 'x', false, __LINE__],
 
+            // value by index
+
+            [['eq' => ['one', ['inx' => [['cx' => ''], ['_' => [0=>'zero', 1=>'one']]]]]], -1, false, __LINE__],
+            [['eq' => ['zero', ['inx' => [['cx' => ''], ['_' => ['zero', 'one', 'two']]]]]], 0, true, __LINE__],
+            [['eq' => ['two', ['inx' => [['cx' => ''], ['_' => ['zero', 'one', 'two']]]]]], 2, true, __LINE__],
+            [['eq' => ['one', ['inx' => [['cx' => ''], ['_' => ['zero', 'one', 'two']]]]]], 3, false, __LINE__],
+            [['eq' => ['X', ['inx' => [['cx' => ''], ['_' => ['zero', 'one', 'default'=>'X']]]]]], 3, true, __LINE__],
+            [['===' => ['1️⃣', ['inx' => [['mod' => [['cx' => ''], 2]], ['_' => ['0️⃣', '1️⃣']]]]]], 13, true, __LINE__],
+
             // strings
 
-            [['sub' => [['cx' => ''], 'медвед']], 'Превед, Медвед!', true, __LINE__],
-            [['sub' => [['cx' => ''], 'МЕДВЕД']], 'Превед, Медвед!', true, __LINE__],
-            [['sub' => [['cx' => ''], 'лошад']], 'Превед, Медвед!', false, __LINE__],
-            [['re' => [['cx' => ''], '/^\d{5}$/']], '00000', true, __LINE__],
-            [['re' => [['cx' => ''], '/^\d{5}$/']], '12345', true, __LINE__],
-            [['re' => [['cx' => ''], '/^\d{5}$/']], ' 12345', false, __LINE__],
-            [['re' => [['cx' => ''], '/^\d{5}$/']], '12345 ', false, __LINE__],
-            [['re' => [['cx' => ''], '/^\d{5}$/']], '123', false, __LINE__],
+            [['sub' => ['медвед', ['cx' => '']]], 'Превед, Медвед!', true, __LINE__],
+            [['sub' => ['МЕДВЕД', ['cx' => '']]], 'Превед, Медвед!', true, __LINE__],
+            [['sub' => ['лошад', ['cx' => '']]], 'Превед, Медвед!', false, __LINE__],
+            [['re' => ['/^\d{5}$/', ['cx' => '']]], '00000', true, __LINE__],
+            [['re' => ['/^\d{5}$/', ['cx' => '']]], '12345', true, __LINE__],
+            [['re' => ['/^\d{5}$/', ['cx' => '']]], ' 12345', false, __LINE__],
+            [['re' => ['/^\d{5}$/', ['cx' => '']]], '12345 ', false, __LINE__],
+            [['re' => ['/^\d{5}$/', ['cx' => '']]], '123', false, __LINE__],
+            [['===' => ['1.2345', ['spf' => ['%s', ['cx' => '']]]]], 1.2345, true, __LINE__],
+            [['===' => ['1.23', ['spf' => ['%.2f', ['cx' => '']]]]], 1.2345, true, __LINE__],
 
             // inlines and returns
 
@@ -285,7 +295,7 @@ EOJ3
             ],
             [
                 [
-                    'in' => [['fn' => ['\strtolower', ['cx' => '']]], ['_' => ['fr', 'de', 'it']]],
+                    'in' => [['fn' => ['strtolower', ['cx' => '']]], ['_' => ['fr', 'de', 'it']]],
                     'return' => ['_' => ['EUR', 1]]
                 ],
                 'FR',
@@ -311,6 +321,31 @@ EOJ3
                 ]],
                 time(),
                 true,
+                __LINE__
+            ],
+            [
+                [
+                    '_' => true,
+                    'return' => ['fn' => [['spf' => ['%s', ['cx' => 'algo']]], ['cx' => 'value']]]
+                ],
+                ['algo' => 'md5', 'value' => 'Secret'],
+                '1e6947ac7fb3a9529a9726eb692c8cc5',
+                __LINE__
+            ],
+            [
+                [
+                    '_' => true,
+                    'return' => ['fn' => [
+                        'hash',
+                        ['inx' => [
+                            ['cx' => 'algo'],
+                            ['_' => ['m' => 'md5', 's' => 'sha256', 'w' => 'whirlpool', 'default' => 'crc32b']]
+                        ]],
+                        ['cx' => 'value']
+                    ]]
+                ],
+                ['algo' => 'b', 'value' => 'Secret'],
+                '5b0eedd3',
                 __LINE__
             ],
 

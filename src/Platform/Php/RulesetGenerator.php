@@ -82,17 +82,17 @@ class RulesetGenerator implements IRulesetGenerator
             $extends_parts[] = "implements $this->implements";
         }
 
-        return preg_replace(
+        $conditions = $this->elementToCode($this->ruleset);
+
+        $code = preg_replace(
             [
                 '/%DeclareStrictTypes%\s*/ui',
                 '/%Namespace%\s*/ui',
                 '/%ClassName%/ui',
                 '/\s*%Extends%/ui',
-                '/%Rules%/ui',
                 '/%ContextType%\s*/ui',
                 '/\s*%ReturnType%/ui',
                 '/%ReturnOnSuccess%/ui',
-                '/%ContextRefs%/ui',
                 '/%ReturnOnFail%/ui',
             ],
             [
@@ -100,15 +100,31 @@ class RulesetGenerator implements IRulesetGenerator
                 $this->namespace ? "namespace $this->namespace;\n\n" : null,
                 $this->class_name,
                 $extends_parts ? ' ' . implode(' ', $extends_parts) : null,
-                $this->elementToCode($this->ruleset),
                 $this->context_type ? "$this->context_type " : null,
                 $this->return_type ? " : $this->return_type" : null,
                 $this->return_on_success,
-                implode(' ', $this->context_refs),
                 $this->return_on_fail,
             ],
             file_get_contents(__DIR__ . '/fragments/main.frg')
         );
+
+        // treat lines with code separately since they may contain symbols treated as pcre backreferences
+        if ($this->context_refs) {
+            $margin = preg_match('/^([ \t]*)%LocalVars%/uim', $code, $m) ? $m[1] : ' ';
+            $code = str_ireplace(
+                '%LocalVars%',
+                "// local vars\n$margin" .
+                implode(
+                    "\n$margin",
+                    array_column($this->context_refs, 'code')
+                ),
+                $code
+            );
+        } else {
+            $code = preg_replace('/%LocalVars%\s*/ui', '', $code);
+        }
+
+        return str_ireplace('%Rules%', $conditions, $code);
     }
 
     /**
@@ -122,7 +138,7 @@ class RulesetGenerator implements IRulesetGenerator
                 if (!is_string($arg)) {
                     throw new InvalidArgumentException('Context argument must be a string');
                 }
-                if ($arg === '') {
+                if ('' === trim($arg)) {
                     return '$context';
                 } else {
                     $parts = [];
@@ -139,11 +155,19 @@ class RulesetGenerator implements IRulesetGenerator
                     }
 
                     $whole = implode('', $parts);
-                    $var_name = '$' . rtrim(preg_replace(['/\W/', '/__+/'], '_', "c_$whole"), '_');
-                    $this->context_refs[$var_name] = "$var_name = " . ($this->php5
-                            ? sprintf('isset($context%s) ? $context%s : null', $whole, $whole)
-                            : sprintf('$context%s ?? null', $whole)
-                        ) . ';';
+                    $var_name = isset($this->context_refs[$arg])
+                        ? $this->context_refs[$arg]['var']
+                        : ('$C_' . (count($this->context_refs) + 1));
+                    $this->context_refs[$arg] = [
+                        'var' => $var_name,
+                        'code' => "$var_name=" .
+                            ($this->php5
+                                ? sprintf('isset($context%s)?$context%s:null', $whole, $whole)
+                                : sprintf('$context%s??null', $whole)
+                            ) .
+                            ';'
+                    ];
+
                     return "$var_name";
                 }
             },
@@ -198,7 +222,7 @@ class RulesetGenerator implements IRulesetGenerator
                     throw new LengthException('"rnd" operation must have 2 arguments');
                 }
                 return sprintf(
-                    '\\rand(%s, %s)',
+                    'rand(%s, %s)',
                     $this->elementToCode($args[0]),
                     $this->elementToCode($args[1])
                 );
@@ -213,7 +237,25 @@ class RulesetGenerator implements IRulesetGenerator
                     throw new InvalidArgumentException('"in" operation must have an array as second argument');
                 }
                 return sprintf(
-                    '\\in_array(%s, %s)',
+                    'in_array(%s, %s, true)',
+                    $this->elementToCode($args[0]),
+                    $this->elementToCode($args[1])
+                );
+            },
+            'inx' => function ($args) {
+                if (!is_array($args) or array_keys($args) != [0, 1]) {
+                    throw new LengthException('"inx" operation must have 2 arguments');
+                }
+                if (!is_array($args[1])) {
+                    throw new InvalidArgumentException('"inx" operation must have a map as second argument');
+                }
+
+                return sprintf(
+                    '(function ($i, $m) {' .
+                    'return array_key_exists($i, $m) ' .
+                        '? $m[$i] ' .
+                        ': (array_key_exists(\'default\', $m) ? $m[\'default\'] : false);' .
+                    '})(%s, %s)',
                     $this->elementToCode($args[0]),
                     $this->elementToCode($args[1])
                 );
@@ -222,26 +264,42 @@ class RulesetGenerator implements IRulesetGenerator
             // string operations
             'sub' => function ($args) {
                 if (!is_array($args) or array_keys($args) != [0, 1]) {
-                    throw new LengthException('"sub" operation must have 2 arguments (text, substring)');
+                    throw new LengthException('"sub" operation must have 2 arguments (substring, text)');
                 }
                 return sprintf(
-                    '\\mb_stripos(%s, %s) !== false',
-                    $this->elementToCode($args[0]),
-                    $this->elementToCode($args[1])
+                    'mb_stripos(%s, %s) !== false',
+                    $this->elementToCode($args[1]),
+                    $this->elementToCode($args[0])
                 );
             },
             're' => function ($args) {
                 if (!is_array($args) or array_keys($args) != [0, 1]) {
-                    throw new LengthException('"re" operation must have 2 arguments (text, regexp)');
+                    throw new LengthException('"re" operation must have 2 arguments (regexp, text)');
                 }
-                if (!is_string($args[1])) {
-                    throw new InvalidArgumentException('"re" operation must have a string as second argument');
+                if (!is_string($args[0])) {
+                    throw new InvalidArgumentException('"re" operation must have a string as first argument');
                 }
                 return sprintf(
-                    "\\preg_match(%s, %s)",
-                    var_export($args[1], true),
-                    $this->elementToCode($args[0])
+                    "preg_match(%s, %s)",
+                    var_export($args[0], true),
+                    $this->elementToCode($args[1])
                 );
+            },
+            'spf' => function ($args) {
+                if (!is_array($args) or empty($args) or !is_string($args[0])) {
+                    throw new LengthException('"spf" operation must have format string as first argument');
+                }
+
+                // set format string from first arg
+                $format = array_shift($args);
+
+                // set sprintf params from the rest of args array
+                $params = [];
+                foreach ($args as $param) {
+                    $params[] = ', ' . $this->elementToCode($param);
+                }
+
+                return sprintf('sprintf(%s%s)', var_export($format, true), implode('', $params));
             },
 
             // inline operator
@@ -268,10 +326,8 @@ class RulesetGenerator implements IRulesetGenerator
 
             // native function call
             'fn' => function ($args) {
-                if (!is_array($args) or count($args) < 1 or !is_string($args[0])) {
-                    throw new LengthException(
-                        '"fn" operation must have at least one argument (function name, [param1, [...]])'
-                    );
+                if (!is_array($args) or empty($args)) {
+                    throw new LengthException('"fn" operation must have function name as first argument');
                 }
 
                 // set function name from first arg
@@ -283,12 +339,27 @@ class RulesetGenerator implements IRulesetGenerator
                     $params[] = $this->elementToCode($param);
                 }
 
-                return sprintf('%s(%s)', $fn, implode(', ', $params));
+                return sprintf('%s(%s)', $this->elementToCode($fn), implode(', ', $params));
             },
         ];
     }
 
     /**
+     * sprintf pattern for argument (whether to use parenthesis around argument value)
+     *
+     * @param mixed $arg
+     * @return string
+     */
+    protected function argFmt($arg): string
+    {
+        return (is_scalar($arg) or is_null($arg) or (is_array($arg) and array_key_exists('cx', $arg)))
+            ? '%s'
+            : '(%s)';
+    }
+
+    /**
+     * Operation with 2 arguments.
+     *
      * @param string $op
      * @param string $code
      * @param mixed $args
@@ -299,8 +370,9 @@ class RulesetGenerator implements IRulesetGenerator
         if (!is_array($args) or array_keys($args) != [0, 1]) {
             throw new LengthException("\"$op\" operator must have 2 arguments");
         }
-        $left_fmt = is_scalar($args[0]) ? '%s' : '(%s)';
-        $right_fmt = is_scalar($args[1]) ? '%s' : '(%s)';
+        $left_fmt = $this->argFmt($args[0]);
+        $right_fmt = $this->argFmt($args[1]);
+
         return sprintf(
             "$left_fmt %s $right_fmt",
             $this->elementToCode($args[0]),
@@ -310,6 +382,8 @@ class RulesetGenerator implements IRulesetGenerator
     }
 
     /**
+     * Operation with 2 or more arguments.
+     *
      * @param string $op
      * @param string $code
      * @param mixed $args
@@ -325,8 +399,7 @@ class RulesetGenerator implements IRulesetGenerator
             if (!is_int($k)) {
                 throw new InvalidArgumentException("\"$op\" operator must not have named keys, found key \"$k\"");
             }
-            $fmt = is_scalar($arg) ? '%s' : '(%s)';
-            $parts[] = sprintf("$fmt", $this->elementToCode($arg));
+            $parts[] = sprintf($this->argFmt($arg), $this->elementToCode($arg));
         }
         return implode(" $code ", $parts);
     }
@@ -355,7 +428,11 @@ class RulesetGenerator implements IRulesetGenerator
         }
 
         if (count($element) != 1) {
-            throw new LengthException(sprintf('Operation must contain one opcode, %u present', count($element)));
+            throw new LengthException(sprintf(
+                'Operation must contain one opcode, %u present: %s',
+                count($element),
+                json_encode($element, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            ));
         }
 
         $op = key($element);
@@ -392,7 +469,7 @@ class RulesetGenerator implements IRulesetGenerator
     {
         if (isset($op['return'])) {
             return sprintf(
-                '(%s) and \gettype($success = %s)',
+                '(%s) and gettype($success = %s)',
                 $this->op_callbacks[$op['op']]($op['args']),
                 $this->elementToCode($op['return'])
             );

@@ -37,11 +37,11 @@ Complex conditions: context is an associative array with `country` and `currency
 
 |country|currency|
 |-------|--------|
-|`US`   |`USD`   |
 |`DE`   |`EUR`   |
 |`ES`   |`EUR`   |
 |`FR`   |`EUR`   |
 |`IT`   |`EUR`   |
+|`US`   |`USD`   |
 
 If condition matches it will return continent name for the context (`North America` or `Europe`) instead of simple `true` value.
 
@@ -50,17 +50,17 @@ If condition matches it will return continent name for the context (`North Ameri
   "or": [
     {
       "and": [
-        {"eq": [{"cx":"country"}, "US"]},
-        {"eq": [{"cx":"currency"}, "USD"]}
-      ],
-      "return": "North America"
-    },
-    {
-      "and": [
         {"in": [{"cx":"country"}, {"_": ["DE", "ES", "FR", "IT"]}]},
         {"eq": [{"cx":"currency"}, "EUR"]}
       ],
       "return": "Europe"
+    },
+    {
+      "and": [
+        {"eq": [{"cx":"country"}, "US"]},
+        {"eq": [{"cx":"currency"}, "USD"]}
+      ],
+      "return": "North America"
     }
   ]
 }
@@ -138,9 +138,11 @@ Examples below are given in json notation, meanings are given as php code.
 
 `cx` - context value (argument: empty string if context is literal, dot-separated list of keys if array)
 
-Example: `{"cx":""}`, `{"cx":"url.path"}`
+Example: `{"cx":""}`,
+`{"cx":"url.path"}`
 
-Meaning: `$context`, `$context['url']['path']`
+Meaning: `$context`,
+`$context['url']['path']`
 
 ### Comparison operators
 
@@ -234,19 +236,33 @@ Example: `{"in": [{"cx":""}, {"_": [1, 2, 3, 5, 8, 13]}]}`
 
 Meaning: `in_array($context, [1, 2, 3, 5, 8, 13])`
 
+`inx` - get element from hash map by index (arguments: index, hash map)
+
+Example: `{"inx": [{"cx":""}, {"_": ["FR": "Europe", "US": "North America"]}]}`,
+`{"inx": [{"cx":""}, {"_": ["US": "North America", "default": "Europe"]}]}`
+
+Meaning: `(["FR" => "Europe", "US" => "North America"])[$context]`,
+`(["US" => "North America"])[$context] ?? "Europe"`
+
 ### String operations
 
 `sub` - needle substring exists in haystack string (arguments: haystack, needle). Search in Unicode case-insensitive mode.
 
-Example: `{"sub": [{"cx":""}, "word"]}`
+Example: `{"sub": ["word", {"cx":""}]}`
 
 Meaning: `mb_stripos($context, "word") !== false`
 
-`re` - string matches regular expression (arguments: string, regex).
+`re` - string matches regular expression (arguments: regex, text).
 
-Example: `{"re": [{"cx":""}, "/^\w+$/u"]}`
+Example: `{"re": ["/^\w+$/u", {"cx":""}]}`
 
 Meaning: `preg_match('/^\w+$/u', $context)`
+
+`spf` - formatted string a.k.a. sprintf (arguments: format string, zero or more values).
+
+Example: `{"spf": ["%.2f", {"cx":""}]}`
+
+Meaning: `sprintf('%.2f', $context)`
 
 ### Inline operator
 

@@ -11,8 +11,7 @@ class %ClassName% %Extends%
         // return on success
         $success = %ReturnOnSuccess%;
 
-        // context refs
-        %ContextRefs%
+        %LocalVars%
 
         // rules
         if (%Rules%) {
