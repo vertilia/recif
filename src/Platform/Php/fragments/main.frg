@@ -6,7 +6,7 @@
 
 class %ClassName% %Extends%
 {
-    public function evaluate(%ContextType% $context) %ReturnType%
+    public %Static% function evaluate(%ContextType% $context) %ReturnType%
     {
         // return on success
         $success = %ReturnOnSuccess%;

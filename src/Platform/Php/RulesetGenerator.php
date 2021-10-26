@@ -14,6 +14,7 @@ class RulesetGenerator implements IRulesetGenerator
     // options
     protected ?bool $declare_strict_types;
     protected ?string $namespace;
+    protected ?bool $static;
     protected ?string $class_name;
     protected ?string $extends;
     protected ?string $implements;
@@ -22,7 +23,7 @@ class RulesetGenerator implements IRulesetGenerator
     protected array $context_refs = [];
     protected ?string $return_on_success;
     protected ?string $return_on_fail;
-    protected ?string $php5;
+    protected ?bool $php5;
 
     // ruleset
     protected $ruleset;
@@ -46,6 +47,7 @@ class RulesetGenerator implements IRulesetGenerator
         // options
         $this->declare_strict_types = $options['declareStrictTypes'] ?? null;
         $this->namespace = $options['namespace'] ?? null;
+        $this->static = $options['static'] ?? null;
         $this->class_name = $options['className'] ?? self::DEFAULT_CLASS_NAME;
         $this->extends = $options['extends'] ?? null;
         $this->implements = $options['implements'] ?? null;
@@ -88,6 +90,7 @@ class RulesetGenerator implements IRulesetGenerator
             [
                 '/%DeclareStrictTypes%\s*/ui',
                 '/%Namespace%\s*/ui',
+                '/%Static%\s*/ui',
                 '/%ClassName%/ui',
                 '/\s*%Extends%/ui',
                 '/%ContextType%\s*/ui',
@@ -98,6 +101,7 @@ class RulesetGenerator implements IRulesetGenerator
             [
                 $this->declare_strict_types ? "declare(strict_types=1);\n\n" : null,
                 $this->namespace ? "namespace $this->namespace;\n\n" : null,
+                $this->static ? "static " : null,
                 $this->class_name,
                 $extends_parts ? ' ' . implode(' ', $extends_parts) : null,
                 $this->context_type ? "$this->context_type " : null,
@@ -160,10 +164,10 @@ class RulesetGenerator implements IRulesetGenerator
                         : ('$C_' . (count($this->context_refs) + 1));
                     $this->context_refs[$arg] = [
                         'var' => $var_name,
-                        'code' => "$var_name=" .
+                        'code' => "$var_name = " .
                             ($this->php5
-                                ? sprintf('isset($context%s)?$context%s:null', $whole, $whole)
-                                : sprintf('$context%s??null', $whole)
+                                ? sprintf('isset($context%s) ? $context%s : null', $whole, $whole)
+                                : sprintf('$context%s ?? null', $whole)
                             ) .
                             ';'
                     ];
@@ -339,7 +343,11 @@ class RulesetGenerator implements IRulesetGenerator
                     $params[] = $this->elementToCode($param);
                 }
 
-                return sprintf('%s(%s)', $this->elementToCode($fn), implode(', ', $params));
+                return sprintf(
+                    '%s(%s)',
+                    is_string($fn) ? $fn : $this->elementToCode($fn),
+                    implode(', ', $params)
+                );
             },
         ];
     }
@@ -352,7 +360,11 @@ class RulesetGenerator implements IRulesetGenerator
      */
     protected function argFmt($arg): string
     {
-        return (is_scalar($arg) or is_null($arg) or (is_array($arg) and array_key_exists('cx', $arg)))
+        return (
+            is_scalar($arg)
+            or is_null($arg)
+            or (is_array($arg) and (array_key_exists('cx', $arg) or array_key_exists('fn', $arg)))
+        )
             ? '%s'
             : '(%s)';
     }

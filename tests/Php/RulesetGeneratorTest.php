@@ -20,6 +20,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
             // options
             [['declareStrictTypes' => true], '/^<\?php\s+declare\(strict_types=1\);/'],
             [['namespace' => 'Test\\Ruleset'], '/^namespace\s+Test\\\\Ruleset;/m'],
+            [['static' => true], '/^\s*public\s+static\s+function\s+/m'],
             [['className' => 'Class1'], '/^class\s+Class1\b/m'],
             [['extends' => 'Class2'], '/^class\s+\w+\s+extends\s+Class2\b/m'],
             [['implements' => 'Interface2'], '/^class\s+\w+\s+implements\s+Interface2\b/m'],
@@ -66,7 +67,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
 
         // run the test with specified context
         $ruleset = new $classname();
-        $this->assertEquals($expected, $ruleset->evaluate($context), var_export($context, 1) . " -> $code");
+        $this->assertEquals($expected, $ruleset->evaluate($context), var_export($context, true) . " -> $code");
 
         // remove test file
         unlink($code_file);
