@@ -25,8 +25,8 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
             [['extends' => 'Class2'], '/^class\s+\w+\s+extends\s+Class2\b/m'],
             [['implements' => 'Interface2'], '/^class\s+\w+\s+implements\s+Interface2\b/m'],
             [
-                ['extends' => 'Class2', 'implements' => 'Interface2'],
-                '/^\bclass\s+\w+\s+extends\s+Class2\s+implements\s+Interface2\b/m',
+                ['extends' => 'Class2', 'implements' => 'Interface2,Interface3'],
+                '/^\bclass\s+\w+\s+extends\s+Class2\s+implements\s+Interface2,\s*\bInterface3\b/m',
             ],
             [['contextType' => 'ContextType'], '/function\s+evaluate\s*\(ContextType\s+\$context\)/'],
             [['returnType' => 'boolean'], '/function\s+evaluate\s*\(\$context\)\s*:\s*boolean\s*\{/'],
@@ -52,7 +52,10 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
         $classname = "Ruleset$line";
 
         // produce the code
-        $rc = new RulesetGenerator($ruleset, ['className' => $classname]);
+        $rc = new RulesetGenerator(null, ['className' => $classname]);
+        if (null !== $ruleset) {
+            $rc->setRules($ruleset);
+        }
         $code = $rc->generate();
         $this->assertStringStartsWith('<?php', $code);
 
