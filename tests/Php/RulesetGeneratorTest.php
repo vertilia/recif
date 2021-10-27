@@ -131,12 +131,12 @@ EOJ3
             [false, "Вася", false, __LINE__],
             [false, [], false, __LINE__],
 
-            [null, true, false, __LINE__],
-            [null, false, false, __LINE__],
-            [null, null, false, __LINE__],
-            [null, 1, false, __LINE__],
-            [null, "Вася", false, __LINE__],
-            [null, [], false, __LINE__],
+            [null, true, true, __LINE__],
+            [null, false, true, __LINE__],
+            [null, null, true, __LINE__],
+            [null, 1, true, __LINE__],
+            [null, "Вася", true, __LINE__],
+            [null, [], true, __LINE__],
 
             [1, true, true, __LINE__],
             [1, false, true, __LINE__],

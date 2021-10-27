@@ -26,7 +26,7 @@ class RulesetGenerator implements IRulesetGenerator
     protected ?bool $php5;
 
     // ruleset
-    protected $ruleset;
+    protected $ruleset = true;
 
     // operations callbacks
     protected array $op_callbacks;
@@ -34,7 +34,7 @@ class RulesetGenerator implements IRulesetGenerator
     /**
      * Instantiates RuleConvertor object, sets ruleset.
      *
-     * @param mixed $ruleset
+     * @param mixed|null $ruleset
      * @param array|null $options list of options: {
      *  "namespace": "MyAppNamespace",
      *  "className": "MyRuleset",
@@ -42,7 +42,7 @@ class RulesetGenerator implements IRulesetGenerator
      *  "implements": "MyInterface"
      * }
      */
-    public function __construct($ruleset, array $options = null)
+    public function __construct($ruleset = null, array $options = null)
     {
         // options
         $this->declare_strict_types = $options['declareStrictTypes'] ?? null;
@@ -63,10 +63,22 @@ class RulesetGenerator implements IRulesetGenerator
         }
 
         // ruleset
-        $this->ruleset = $ruleset;
+        if (null !== $ruleset) {
+            $this->setRules($ruleset);
+        }
 
         // op callbacks
         $this->initCallbacks();
+    }
+
+    /**
+     * @param mixed $ruleset
+     * @return $this
+     */
+    public function setRules($ruleset): self
+    {
+        $this->ruleset = $ruleset;
+        return $this;
     }
 
     /**
