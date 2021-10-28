@@ -2,15 +2,20 @@
 
 namespace Recif\Platform\Php;
 
+/**
+ * @coversDefaultClass RulesetGenerator
+ */
 class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @dataProvider rulesetsOptionsProvider
+     * @covers ::__construct
+     * @covers ::addOptions
      */
     public function testOptions($options, $pattern)
     {
-        $rc = new RulesetGenerator(true, $options);
-        $code = $rc->generate();
+        $rc = new RulesetGenerator(true);
+        $code = $rc->addOptions($options)->generate();
         $this->assertMatchesRegularExpression($pattern, $code);
     }
 

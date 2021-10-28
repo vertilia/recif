@@ -12,18 +12,33 @@ class RulesetGenerator implements IRulesetGenerator
     const DEFAULT_CLASS_NAME = 'Ruleset';
 
     // options
-    protected ?bool $declare_strict_types;
-    protected ?string $namespace;
-    protected ?bool $static;
-    protected ?string $class_name;
-    protected ?string $extends;
-    protected ?string $implements;
-    protected ?string $context_type;
-    protected ?string $return_type;
+    protected bool $declare_strict_types = false;
+    protected ?string $namespace = null;
+    protected bool $static = false;
+    protected string $class_name = self::DEFAULT_CLASS_NAME;
+    protected ?string $extends = null;
+    protected ?string $implements = null;
+    protected ?string $context_type = null;
+    protected ?string $return_type = null;
+    protected string $return_on_success = 'true';
+    protected string $return_on_fail = 'false';
+    protected bool $php5 = false;
+
+    protected array $opt2prop = [
+        'declareStrictTypes' => 'declare_strict_types',
+        'namespace' => 'namespace',
+        'static' => 'static',
+        'className' => 'class_name',
+        'extends' => 'extends',
+        'implements' => 'implements',
+        'contextType' => 'context_type',
+        'returnType' => 'return_type',
+        'returnOnSuccess' => 'return_on_success',
+        'returnOnFail' => 'return_on_fail',
+        'php5' => 'php5',
+    ];
+
     protected array $context_refs = [];
-    protected ?string $return_on_success;
-    protected ?string $return_on_fail;
-    protected ?bool $php5;
 
     // ruleset
     protected $ruleset = true;
@@ -45,21 +60,8 @@ class RulesetGenerator implements IRulesetGenerator
     public function __construct($ruleset = null, array $options = null)
     {
         // options
-        $this->declare_strict_types = $options['declareStrictTypes'] ?? null;
-        $this->namespace = $options['namespace'] ?? null;
-        $this->static = $options['static'] ?? null;
-        $this->class_name = $options['className'] ?? self::DEFAULT_CLASS_NAME;
-        $this->extends = $options['extends'] ?? null;
-        $this->implements = $options['implements'] ?? null;
-        $this->context_type = $options['contextType'] ?? null;
-        $this->return_type = $options['returnType'] ?? null;
-        $this->return_on_success = $options['returnOnSuccess'] ?? 'true';
-        $this->return_on_fail = $options['returnOnFail'] ?? 'false';
-        $this->php5 = $options['php5'] ?? null;
-
-        if ($this->php5) {
-            $this->declare_strict_types = null;
-            $this->return_type = null;
+        if ($options) {
+            $this->addOptions($options);
         }
 
         // ruleset
@@ -78,6 +80,26 @@ class RulesetGenerator implements IRulesetGenerator
     public function setRules($ruleset): self
     {
         $this->ruleset = $ruleset;
+        $this->context_refs = [];
+
+        return $this;
+    }
+
+    /**
+     * @param array $options
+     * @return $this
+     */
+    public function addOptions(array $options): self
+    {
+        foreach (array_intersect_key($this->opt2prop, $options) as $opt => $prop) {
+            $this->$prop = $options[$opt];
+        }
+
+        if ($this->php5) {
+            $this->declare_strict_types = false;
+            $this->return_type = null;
+        }
+
         return $this;
     }
 
