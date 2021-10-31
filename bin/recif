@@ -42,8 +42,11 @@ EOU
     }
 
     // set generator options
-    $opt = getopt('n:sc:e:i:t:r:S:F:d5y');
+    $opt = getopt('C:n:sc:e:i:t:r:S:F:d5y');
     $options = [];
+    if (isset($opt['C'])) {
+        $options['comment'] = $opt['C'];
+    }
     if (isset($opt['n'])) {
         $options['namespace'] = $opt['n'];
     }

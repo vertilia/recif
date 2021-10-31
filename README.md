@@ -84,17 +84,19 @@ Make an alias to the executable `recif/bin/recif` to run it as `recif` command.
 ```
 $ recif [options] <ruleset.json >ruleset.php
 Options:
-  -n  namespace (default: not set)
-  -c  class name (default: Ruleset)
-  -e  extends class (default: not set)
-  -i  implements interfaces, comma separated list (default: not set)
-  -x  context type (default: not set)
-  -r  return type (default: not set)
-  -S  return on success default value (default: true)
-  -F  return on fail default value (default: false)
+  -C  COMMENT add comments text, should not contain open / close comment sequences (default: not set)
+  -n  NAMESPACE use namespace (default: not set)
+  -s  generate static evaluate() method (default: not set)
+  -c  CLASS use class name (default: Ruleset)
+  -e  CLASS extends class (default: not set)
+  -i  INTERFACE implements interfaces, comma separated list (default: not set)
+  -x  TYPE define context parameter type (default: not set)
+  -r  TYPE define method return type (default: not set)
+  -S  VALUE return on success default value (default: true)
+  -F  VALUE return on fail default value (default: false)
   -d  declare static_types (default: not set)
   -5  generate php5-compatible code
-  -y  YAML format of input stream (needs yaml PECL extension)
+  -y  input stream in YAML format (needs yaml PECL extension)
 ```
 
 Simplest ruleset: evaluate the `true` statement:

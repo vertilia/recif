@@ -9,6 +9,11 @@
             "Recif\\": "src/"
         }
     },
+    "archive": {
+        "exclude": [
+            "/tests"
+        ]
+    },
     "config": {
         "optimize-autoloader": true,
         "platform": {

@@ -3,9 +3,8 @@
 Thumbs.db
 
 # IDEs
-.vscode/*
-.idea/*
+/.vscode/
+/.idea/
 
 # composer
-composer.lock
-vendor/
+/vendor/
