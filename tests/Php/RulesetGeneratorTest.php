@@ -24,6 +24,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
         return [
             // options
             [['declareStrictTypes' => true], '/^<\?php\s+declare\(strict_types=1\);/'],
+            [['comment' => 'this is comment'], '/this is comment/'],
             [['namespace' => 'Test\\Ruleset'], '/^namespace\s+Test\\\\Ruleset;/m'],
             [['static' => true], '/^\s*public\s+static\s+function\s+/m'],
             [['className' => 'Class1'], '/^class\s+Class1\b/m'],
@@ -57,7 +58,7 @@ class RulesetGeneratorTest extends \PHPUnit\Framework\TestCase
         $classname = "Ruleset$line";
 
         // produce the code
-        $rc = new RulesetGenerator(null, ['className' => $classname]);
+        $rc = new RulesetGenerator(null, ['comment' => "rule from line $line", 'className' => $classname]);
         if (null !== $ruleset) {
             $rc->setRules($ruleset);
         }

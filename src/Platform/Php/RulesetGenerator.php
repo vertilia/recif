@@ -13,6 +13,7 @@ class RulesetGenerator implements IRulesetGenerator
 
     // options
     protected bool $declare_strict_types = false;
+    protected ?string $comment = null;
     protected ?string $namespace = null;
     protected bool $static = false;
     protected string $class_name = self::DEFAULT_CLASS_NAME;
@@ -26,6 +27,7 @@ class RulesetGenerator implements IRulesetGenerator
 
     protected array $opt2prop = [
         'declareStrictTypes' => 'declare_strict_types',
+        'comment' => 'comment',
         'namespace' => 'namespace',
         'static' => 'static',
         'className' => 'class_name',
@@ -123,6 +125,7 @@ class RulesetGenerator implements IRulesetGenerator
         $code = preg_replace(
             [
                 '/%DeclareStrictTypes%\s*/ui',
+                '/%Comment%\s*/ui',
                 '/%Namespace%\s*/ui',
                 '/%Static%\s*/ui',
                 '/%ClassName%/ui',
@@ -134,6 +137,7 @@ class RulesetGenerator implements IRulesetGenerator
             ],
             [
                 $this->declare_strict_types ? "declare(strict_types=1);\n\n" : null,
+                $this->comment ? "/* $this->comment */\n\n" : null,
                 $this->namespace ? "namespace $this->namespace;\n\n" : null,
                 $this->static ? "static " : null,
                 $this->class_name,

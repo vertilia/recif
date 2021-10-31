@@ -2,6 +2,8 @@
 
 %DeclareStrictTypes%
 
+%Comment%
+
 %Namespace%
 
 class %ClassName% %Extends%

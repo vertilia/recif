@@ -21,6 +21,7 @@ call_user_func(function() use ($argv){
 <<<EOU
 Usage: %s [options] <ruleset.json >Ruleset.php
 Options:
+  -C  COMMENT add comments text, should not contain open / close comment sequences (default: not set)
   -n  NAMESPACE use namespace (default: not set)
   -s  generate static method (default: not set)
   -c  CLASS use class name (default: Ruleset)
