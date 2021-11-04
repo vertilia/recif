@@ -248,7 +248,7 @@ Meaning: `(["FR" => "Europe", "US" => "North America"])[$context]`,
 
 ### String operations
 
-`sub` - needle substring exists in haystack string (arguments: haystack, needle). Search in Unicode case-insensitive mode.
+`sub` - needle substring exists in haystack string (arguments: needle, haystack). Search in Unicode case-insensitive mode.
 
 Example: `{"sub": ["word", {"cx":""}]}`
 
