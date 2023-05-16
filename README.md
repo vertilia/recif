@@ -70,19 +70,19 @@ Note: to represent an array you need to use a special `{"_": ...}` inline operat
 
 ## Installation
 
-Clone from `GitHub` and initialise with `composer`:
+Require with `composer`:
 
 ```
-$ git clone https://github.com/vertilia/recif.git
-$ composer dump-autoload -d recif
+$ composer require vertilia/recif
 ```
 
 ## Command line usage
 
-Make an alias to the executable `recif/bin/recif` to run it as `recif` command.
+After installation with `composer`, `recif` binary is available as `vendor/bin/recif`.
 
 ```
-$ recif [options] <ruleset.json >ruleset.php
+$ vendor/bin/recif
+Usage: recif [options] <ruleset.json >Ruleset.php
 Options:
   -C  COMMENT add comments text, should not contain open / close comment sequences (default: not set)
   -n  NAMESPACE use namespace (default: not set)
@@ -102,19 +102,19 @@ Options:
 Simplest ruleset: evaluate the `true` statement:
 
 ```
-echo true | recif
+echo 'true' | recif
 ```
 
-Same level: evaluate that 1 > 0:
+Same level: evaluate that `1 > 0`:
 
 ```
 echo '{"gt":[1,0]}' | recif
 ```
 
-Check context, add namespace to generated class and specify return type of its `evaluate()` method:
+Do something meaningful: check context, add namespace to generated class and specify return type of its `evaluate()` method:
 
 ```
-echo '{"gt":[{"cx":""},0]}' | recif -n MyNamespace\\Level2 -r boolean
+echo '{"gt":[{"cx":""},0]}' | recif -n MyNamespace\\Level2 -r bool
 ```
 
 ## Syntax of rule files
@@ -392,4 +392,4 @@ if (
 }
 ```
 
-**REMARK** In `php-5` compatibility mode the `($context['currency'] ?? null)` and similar constructs will be replaced by `isset($context['currency']) and $context['currency']` constructs.
+**REMARK** In `php-5` compatibility mode, the `($context['currency'] ?? null)` and similar constructs will be replaced by `isset($context['currency']) and $context['currency']` constructs.

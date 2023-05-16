@@ -7,4 +7,8 @@ Thumbs.db
 /.idea/
 
 # composer
-/vendor/
+composer.lock
+vendor/
+
+# PhpUnit
+.phpunit.result.cache

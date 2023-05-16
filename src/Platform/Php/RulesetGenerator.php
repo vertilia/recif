@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recif\Platform\Php;
 
 use InvalidArgumentException;
@@ -42,7 +44,7 @@ class RulesetGenerator implements IRulesetGenerator
 
     protected array $context_refs = [];
 
-    // ruleset
+    /** @var mixed $ruleset */
     protected $ruleset = true;
 
     // operations callbacks
@@ -52,14 +54,14 @@ class RulesetGenerator implements IRulesetGenerator
      * Instantiates RuleConvertor object, sets ruleset.
      *
      * @param mixed|null $ruleset
-     * @param array|null $options list of options: {
+     * @param ?array $options list of options: {
      *  "namespace": "MyAppNamespace",
      *  "className": "MyRuleset",
      *  "extends": "MyClass",
      *  "implements": "MyInterface"
      * }
      */
-    public function __construct($ruleset = null, array $options = null)
+    public function __construct($ruleset = null, ?array $options = null)
     {
         // options
         if ($options) {
